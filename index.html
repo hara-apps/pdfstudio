@@ -1,0 +1,1187 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PDF-студия</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<!--
+  ═══ PDF-СТУДИЯ, ЭТАП 1 ═══
+  ЧТО ЭТА СТРАНИЦА ДЕЛАЕТ САМА, А ЧТО ПРОСИТ У ДРУГИХ:
+    · рисует страницы (pdf.js, Apache-2.0, лежит рядом двумя файлами);
+    · собирает НАМЕРЕНИЕ человека - порядок страниц, поворот, что удалить;
+    · за БИЛЕТОМ ходит к Worker'у (там и только там проверяют подпись Telegram);
+    · файл кладёт на ПЕСОЧНИЦУ (адрес приезжает параметром `pdf=`), и работу делает она.
+  СВОЕЙ ЛОГИКИ РАБОТЫ НАД PDF ЗДЕСЬ НЕТ НИ ОДНОЙ СТРОКИ: страница показывает и просит.
+
+  ═══ ЧЕГО В ЭТАПЕ 1 НЕТ, И ЭТО СКАЗАНО ЧЕЛОВЕКУ, А НЕ ЗАМОЛЧАНО ═══
+  Объединение двух документов и конвертация из Word/Excel остались В ЧАТЕ, где они уже
+  работают. Причина у каждой своя и названа внизу экрана: объединению нужен ВТОРОЙ файл
+  (то есть вторая сессия и второй билет), конвертации - вход, который не является PDF, а
+  приём студии принимает только `%PDF-`. Сделать их наполовину значило бы завести кнопку,
+  которая иногда работает.
+-->
+<style>
+/* ═══ ЦВЕТ ЖИВЁТ ТОКЕНАМИ, И ОБЕ ТЕМЫ ЗАДАНЫ ЦЕЛИКОМ ═══
+   Telegram отдаёт свои `themeParams`, но НЕ ВСЕГДА и не все поля (в браузере их нет
+   вовсе). Поэтому наши значения - основа, а тема клиента накладывается сверху там, где
+   она есть: страница обязана быть читаемой ДО того, как SDK что-то сказал. */
+:root{
+  --bg:#f6f7f9; --card:#fff; --ink:#12151a; --dim:#5b6270; --line:#e3e6ea;
+  --accent:#7c3aed; --accent-ink:#fff; --accent-line:#8b5cf6;
+  --warn:#92400e; --warn-bg:#fef3c7; --bad:#9d174d; --ok:#059669;
+  --sel:#ede9fe;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0f1115; --card:#171a20; --ink:#e7e9ee; --dim:#9aa2b1; --line:#262b34;
+    --accent:#8b5cf6; --accent-ink:#fff; --accent-line:#a78bfa;
+    --warn:#fbbf24; --warn-bg:#3a2f14; --bad:#fb7185; --ok:#34d399;
+    --sel:#2a2140;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg); color:var(--ink); font:15px/1.45 -apple-system,BlinkMacSystemFont,
+  "Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  /* min-height, А НЕ height:100% - иначе контейнер равен ровно экрану, и липкая шапка
+     уезжает вместе со списком после первой прокрутки (замер в браузере, закон №37). */
+  min-height:100vh; padding-bottom:96px;
+  -webkit-text-size-adjust:100%;
+}
+header{
+  position:sticky; top:0; z-index:20; background:var(--card);
+  border-bottom:1px solid var(--line); padding:10px 12px 8px;
+}
+h1{font-size:16px; margin:0 0 2px; font-weight:650}
+.sub{font-size:12px; color:var(--dim)}
+.row{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+/* ═══ РЯД ДЕЙСТВИЙ ЖИВЁТ ВНУТРИ ЛИПКОЙ ШАПКИ ═══
+   Отдельным блоком под ней он уезжал бы ПОД неё на первой же прокрутке, и от кнопок
+   оставалась бы нижняя половина (закон №37: липкий элемент прибит к своему контейнеру). */
+.tools{margin-top:8px}
+button{
+  font:inherit; color:var(--ink); background:var(--card); border:1px solid var(--line);
+  border-radius:9px; padding:8px 11px; cursor:pointer; min-height:38px;
+}
+button:active{transform:translateY(1px)}
+button[disabled]{opacity:.45; cursor:default}
+button.pri{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+button.sm{padding:6px 9px; min-height:32px; font-size:13px}
+#grid{
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(104px,1fr));
+  gap:10px; padding:12px;
+}
+.pg{
+  background:var(--card); border:2px solid var(--line); border-radius:10px;
+  padding:6px 6px 4px; text-align:center; position:relative; touch-action:none;
+  user-select:none; -webkit-user-select:none;
+}
+.pg.sel{border-color:var(--accent-line); background:var(--sel)}
+.pg.drag{opacity:.4}
+.pg.over{border-color:var(--accent); border-style:dashed}
+.pg canvas{width:100%; height:auto; display:block; border-radius:4px; background:#fff}
+.pg .n{font-size:11px; color:var(--dim); margin-top:3px}
+.pg .x{
+  position:absolute; top:2px; right:2px; width:22px; height:22px; line-height:20px;
+  border-radius:50%; border:1px solid var(--line); background:var(--card);
+  font-size:13px; padding:0; min-height:0;
+}
+#drop{
+  margin:14px 12px; padding:26px 14px; border:2px dashed var(--line); border-radius:12px;
+  text-align:center; color:var(--dim); background:var(--card);
+}
+#drop.hot{border-color:var(--accent); color:var(--ink)}
+#say{padding:10px 12px; font-size:13px; color:var(--dim); white-space:pre-wrap}
+#say.bad{color:var(--bad)} #say.ok{color:var(--ok)}
+#note{
+  margin:10px 12px; padding:9px 11px; border-radius:9px; background:var(--warn-bg);
+  color:var(--warn); font-size:12.5px;
+}
+#bar{
+  position:fixed; left:0; right:0; bottom:0; z-index:30; background:var(--card);
+  border-top:1px solid var(--line); padding:9px 12px calc(9px + env(safe-area-inset-bottom));
+  display:flex; gap:8px;
+}
+#bar button{flex:1}
+#zoom{
+  position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.88); display:none;
+  overflow:auto; padding:12px; text-align:center;
+}
+#zoom.on{display:block}
+#zoom canvas{max-width:100%; height:auto; background:#fff; border-radius:6px}
+#zoom .close{position:sticky; top:0; float:right}
+.foot{padding:4px 12px 12px; font-size:11.5px; color:var(--dim)}
+/* ═══ ПОДПИСЬ ═══
+   `touch-action:none` обязателен и на холсте рисования, и на рамке размещения: без него
+   жест пальца уезжает в ПРОКРУТКУ страницы, и человек вместо росчерка листает документ.
+   Урок оплачен доской в комнате, оттуда же и pointer events вместо touch/mouse. */
+#sig{
+  position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.92); display:none;
+  overflow:auto; padding:12px calc(12px + env(safe-area-inset-left)) 96px;
+}
+#sig.on{display:block}
+#sig .card{
+  max-width:560px; margin:0 auto; background:var(--card); border:1px solid var(--line);
+  border-radius:12px; padding:12px;
+}
+#sig h2{font-size:15px; margin:0 0 8px}
+#sigNote{
+  margin:0 0 10px; padding:9px 11px; border-radius:9px; background:var(--warn-bg);
+  color:var(--warn); font-size:12.5px;
+}
+#sigSaved{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px}
+.sigCard{
+  position:relative; border:2px solid var(--line); border-radius:9px; background:#fff;
+  padding:4px; width:132px; cursor:pointer;
+}
+.sigCard.sel{border-color:var(--accent)}
+.sigCard img{width:100%; height:46px; object-fit:contain; display:block}
+.sigCard .nm{font-size:10.5px; color:#444; text-align:center; margin-top:2px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.sigCard .x{
+  position:absolute; top:-7px; right:-7px; width:22px; height:22px; line-height:20px;
+  border-radius:50%; border:1px solid var(--line); background:var(--card);
+  font-size:13px; padding:0; min-height:0;
+}
+#sigPad{
+  width:100%; height:190px; background:#fff; border:1px dashed var(--line);
+  border-radius:9px; display:block; touch-action:none; cursor:crosshair;
+}
+#sigRow{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px}
+#sigWrap{position:relative; margin:0 auto; width:max-content; max-width:100%}
+#sigWrap canvas{display:block; max-width:100%; height:auto; background:#fff; border-radius:6px}
+#sigBox{
+  position:absolute; border:1.5px dashed var(--accent); background:transparent;
+  touch-action:none; cursor:move;
+}
+#sigBox img{width:100%; height:100%; display:block; pointer-events:none}
+#sigGrip{
+  position:absolute; right:-11px; bottom:-11px; width:26px; height:26px; border-radius:50%;
+  background:var(--accent); border:2px solid #fff; touch-action:none; cursor:nwse-resize;
+}
+#sigBar{
+  position:fixed; left:0; right:0; bottom:0; z-index:61; background:var(--card);
+  border-top:1px solid var(--line); padding:9px 12px calc(9px + env(safe-area-inset-bottom));
+  display:flex; gap:8px;
+}
+#sigBar button{flex:1}
+#sigPage{font-size:12.5px; color:var(--dim); text-align:center; margin:8px 0}
+#ask{
+  position:fixed; inset:0; z-index:70; background:rgba(0,0,0,.9); display:none;
+  padding:16px; align-items:center; justify-content:center;
+}
+#ask.on{display:flex}
+#ask .card{max-width:420px; width:100%}
+#ask input{
+  width:100%; box-sizing:border-box; font:inherit; color:var(--ink); background:var(--bg);
+  border:1px solid var(--line); border-radius:9px; padding:9px 11px; margin:8px 0;
+}
+</style>
+
+<header>
+  <h1 id="ttl">PDF-студия</h1>
+  <div class="sub" id="sub">Готовлюсь…</div>
+  <div class="row tools" id="tools" hidden>
+    <button class="sm" id="bAll">Все</button>
+    <button class="sm" id="bNone">Снять</button>
+    <button class="sm" id="bRotL">↺ 90°</button>
+    <button class="sm" id="bRotR">↻ 90°</button>
+    <button class="sm" id="bKeep">Оставить выделенные</button>
+    <button class="sm" id="bDel">Удалить выделенные</button>
+    <button class="sm" id="bZip">🗜 Сжать</button>
+    <button class="sm" id="bSign">✍️ Подпись</button>
+    <button class="sm" id="bReset">↩︎ Сначала</button>
+  </div>
+</header>
+
+<div id="note" hidden></div>
+<div id="drop">Перетащи сюда PDF или нажми, чтобы выбрать</div>
+<input type="file" id="file" accept="application/pdf,.pdf" hidden>
+<div id="grid"></div>
+<div id="say"></div>
+<div class="foot" id="foot"></div>
+
+<div id="bar" hidden>
+  <button id="bSave" class="pri">⬇️ Скачать</button>
+  <button id="bChat">📩 В чат</button>
+</div>
+
+<div id="zoom"><button class="close sm" id="bZclose">✕</button><div id="zbox"></div></div>
+
+<!-- ПОДПИСЬ. Дисклеймер стоит ПЕРВОЙ строкой этого экрана и виден ДО того, как человек
+     что-то выбрал: показанный после файла, он читается как оправдание задним числом. -->
+<div id="sig">
+  <div class="card">
+    <h2 id="sigTtl"></h2>
+    <div id="sigNote"></div>
+    <div id="sigPickBox">
+      <div id="sigSavedTtl" class="foot" style="padding:0 0 6px"></div>
+      <div id="sigSaved"></div>
+      <div id="sigDrawTtl" class="foot" style="padding:0 0 6px"></div>
+      <canvas id="sigPad"></canvas>
+      <div id="sigRow">
+        <button class="sm" id="bSigClear"></button>
+        <button class="sm" id="bSigFile"></button>
+        <input type="file" id="sigFile" accept="image/png,image/jpeg" hidden>
+      </div>
+    </div>
+    <div id="sigPlaceBox" hidden>
+      <div id="sigPage"></div>
+      <div id="sigWrap">
+        <canvas id="sigPageCv"></canvas>
+        <div id="sigBox"><img id="sigImg" alt=""><div id="sigGrip"></div></div>
+      </div>
+    </div>
+    <div id="sigSay" style="font-size:13px; color:var(--dim); padding-top:8px"></div>
+  </div>
+</div>
+<div id="sigBar" hidden>
+  <button id="bSigCancel"></button>
+  <button id="bSigKeep" class="sm"></button>
+  <button id="bSigGo" class="pri"></button>
+</div>
+
+<!-- СВОЯ КАРТОЧКА ВМЕСТО `prompt`: в вебвью Telegram он НЕ ПОКАЗЫВАЕТСЯ ВОВСЕ (оплачено
+     доской в комнате). Спрашиваем имя подписи здесь. -->
+<div id="ask">
+  <div class="card">
+    <div id="askTtl" style="font-size:14px"></div>
+    <input id="askInput" maxlength="40">
+    <div style="display:flex; gap:8px">
+      <button class="sm" id="askNo" style="flex:1"></button>
+      <button class="sm pri" id="askYes" style="flex:1"></button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ЯЗЫК. ОБА СРАЗУ (закон №20): страница новая, и завести её по-русски значило бы
+   немедленно дописать её в реестр остатков мультиязычности - то есть отложить работу,
+   которая здесь стоит десяти строк. Пин приезжает параметром `lang` от бота (он знает
+   выбор человека), иначе спрашиваем клиента.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+const Q = new URLSearchParams(location.search);
+const tg = window.Telegram && window.Telegram.WebApp;
+const LANG = (Q.get('lang') || (tg && tg.initDataUnsafe && tg.initDataUnsafe.user
+  && tg.initDataUnsafe.user.language_code) || 'ru').slice(0, 2).toLowerCase() === 'en'
+  ? 'en' : 'ru';
+const T = {
+  ru: {
+    ttl: 'PDF-студия', drop: 'Перетащи сюда PDF или нажми, чтобы выбрать',
+    all: 'Все', none: 'Снять', keep: 'Оставить выделенные', del: 'Удалить выделенные',
+    zip: '🗜 Сжать', reset: '↩︎ Сначала', save: '⬇️ Скачать', chat: '📩 В чат',
+    pages: (n) => 'страниц: ' + n, sel: (n) => ', выделено ' + n,
+    loading: 'Открываю документ…', sending: 'Загружаю файл…', working: 'Работаю…',
+    ready: 'Готово.', gone: 'Файл забран - сессия закрыта.',
+    noSign: 'Telegram не передал подпись - студия открыта не из чата. Открой её кнопкой '
+          + 'под документом.',
+    noApi: 'В страницу не доехал адрес бота - открой студию заново из чата.',
+    noBase: 'В страницу не доехал адрес приёма файлов - открой студию заново из чата.',
+    big: (m) => 'Файл больше ' + m + ' МБ - столько студия не берёт.',
+    notPdf: 'Это не PDF. Студия работает только с PDF.',
+    pick: 'Сначала выдели страницы.',
+    keepAll: 'Выделены все страницы - удалять нечего.',
+    delAll: 'Нельзя удалить все страницы: в документе должна остаться хотя бы одна.',
+    sentChat: 'Отправил в чат. Можешь закрывать студию.',
+    foot: 'Объединить два документа и превратить Word в PDF пока умеет чат, а не студия: '
+        + 'первому нужен второй файл, второму - вход, который не PDF. Кнопки под '
+        + 'присланным документом на месте.',
+    old: 'Студия обновилась - перезагружаю…',
+    oldStuck: 'Перезагрузился, а версия всё равно старая. Сам обновиться не могу - закрой '
+            + 'студию и открой заново из чата.',
+    contract: 'Студия и бот разошлись версиями. Закрой её и открой заново из чата.',
+    sign: '✍️ Подпись',
+    signTtl: 'Подпись на странице',
+    /* ЮРИДИЧЕСКАЯ ФОРМУЛИРОВКА - ТА ЖЕ, ЧТО У БОТА (`i18n['pdf.sign.note']`), слово в
+       слово. Две редакции одного предупреждения разъехались бы на первой правке, и
+       человек прочитал бы РАЗНОЕ в чате и в студии (закон №40). */
+    signNote: '✍️ Это ВИЗУАЛЬНАЯ подпись - картинка поверх страницы, как от руки на '
+            + 'распечатке. Юридической силы она не имеет и квалифицированной ЭЦП не '
+            + 'является: файл не заверен и подписант криптографически не подтверждён.',
+    signSaved: 'Сохранённые подписи (тап - выбрать):',
+    signNoSaved: 'Сохранённых подписей пока нет.',
+    signDraw: 'Или нарисуй пальцем:',
+    signClear: '✕ Стереть',
+    signFile: '🖼 Из файла',
+    signCancel: 'Отмена',
+    signKeep: '💾 В профиль',
+    signNext: 'Дальше →',
+    signGo: '✍️ Поставить',
+    signEmpty: 'Подпись пустая - нарисуй её или выбери сохранённую.',
+    signPage: (n, all) => 'Страница ' + n + ' из ' + all + ' - тащи подпись, угол меняет размер',
+    signPrev: '‹', signNextPg: '›',
+    signAskName: 'Как назвать подпись?',
+    signWait: 'Бот пока не ответил - подписи из профиля не приехали.',
+    signPlaced: 'Подпись поставлена.',
+    signBad: 'Картинка не открылась - нужен PNG или JPEG.',
+    ok: 'OK', cancel: 'Отмена',
+  },
+  en: {
+    ttl: 'PDF studio', drop: 'Drop a PDF here, or tap to choose one',
+    all: 'All', none: 'Clear', keep: 'Keep selected', del: 'Delete selected',
+    zip: '🗜 Compress', reset: '↩︎ Start over', save: '⬇️ Download', chat: '📩 To chat',
+    pages: (n) => 'pages: ' + n, sel: (n) => ', selected ' + n,
+    loading: 'Opening the document…', sending: 'Uploading…', working: 'Working…',
+    ready: 'Done.', gone: 'File taken - the session is closed.',
+    noSign: 'Telegram did not pass a signature - the studio was not opened from the chat. '
+          + 'Use the button under your document.',
+    noApi: 'The bot address did not reach this page - reopen the studio from the chat.',
+    noBase: 'The upload address did not reach this page - reopen the studio from the chat.',
+    big: (m) => 'The file is over ' + m + ' MB - the studio does not take that much.',
+    notPdf: 'That is not a PDF. The studio only works with PDFs.',
+    pick: 'Select some pages first.',
+    keepAll: 'Every page is selected - nothing to drop.',
+    delAll: 'Cannot delete every page: at least one must remain.',
+    sentChat: 'Sent to the chat. You can close the studio.',
+    foot: 'Merging two documents and turning Word into PDF still live in the chat, not '
+        + 'here: the first needs a second file, the second needs input that is not a PDF. '
+        + 'The buttons under your document are where they were.',
+    old: 'The studio was updated - reloading…',
+    oldStuck: 'Reloaded and still on the old version. I cannot update myself - close the '
+            + 'studio and open it again from the chat.',
+    contract: 'The studio and the bot are on different versions. Close it and open it '
+            + 'again from the chat.',
+    sign: '✍️ Signature',
+    signTtl: 'Signature on the page',
+    signNote: '✍️ This is a VISUAL signature - an image drawn over the page, like ink on a '
+            + 'printout. It carries no legal force and is not a qualified digital '
+            + 'signature: the file is not certified and the signer is not cryptographically '
+            + 'verified.',
+    signSaved: 'Saved signatures (tap to pick):',
+    signNoSaved: 'No saved signatures yet.',
+    signDraw: 'Or draw one with your finger:',
+    signClear: '✕ Clear',
+    signFile: '🖼 From a file',
+    signCancel: 'Cancel',
+    signKeep: '💾 Save to profile',
+    signNext: 'Next →',
+    signGo: '✍️ Place it',
+    signEmpty: 'The signature is empty - draw one or pick a saved one.',
+    signPage: (n, all) => 'Page ' + n + ' of ' + all + ' - drag the signature, the corner resizes it',
+    signPrev: '‹', signNextPg: '›',
+    signAskName: 'Name this signature',
+    signWait: 'The bot has not answered yet - saved signatures did not arrive.',
+    signPlaced: 'Signature placed.',
+    signBad: 'Could not open the image - PNG or JPEG is needed.',
+    ok: 'OK', cancel: 'Cancel',
+  },
+}[LANG];
+
+const VERSION = 'bced0ae9f1d3';
+/* АДРЕСА - ПАРАМЕТРОМ ССЫЛКИ СИЛЬНЕЕ ЗАШИТОГО ПРИ ВЫКЛАДКЕ. Причина записана в
+   publish_static.page_url и стоила полдня: `https://hara-search.laynenorstrud.workers.dev` подставляется В МОМЕНТ ДЕПЛОЯ, и
+   если Worker тогда не был в реестре, страница остаётся без адреса НАВСЕГДА. Ссылку же
+   бот собирает заново на каждый тап. */
+const API = (Q.get('api') || 'https://hara-search.laynenorstrud.workers.dev').replace(/\/+$/, '');
+const BASE = (Q.get('pdf') || '').replace(/\/+$/, '');
+const INIT = (tg && tg.initData) || '';
+
+const $ = (id) => document.getElementById(id);
+const say = (t, cls) => { const e = $('say'); e.textContent = t || ''; e.className = cls || ''; };
+const note = (t) => { const e = $('note'); e.textContent = t || ''; e.hidden = !t; };
+
+/* ═══ ПОЧЕМУ НЕ РАБОТАЕТ - ТРИ РАЗНЫХ ОТВЕТА, А НЕ ОДИН ═══
+   Живой урок плеера: одна фраза «связи с ботом нет» стояла и там, где нет адреса, и там,
+   где нет подписи, - и разбор полдня шёл в сторону исправного Worker'а. */
+function whyOff() {
+  if (!INIT) return T.noSign;
+  if (!API) return T.noApi;
+  if (!BASE) return T.noBase;
+  return '';
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   PDF.JS: СОВРЕМЕННАЯ СБОРКА, ОТКАТ НА LEGACY БЕЗ ПЕРЕДЕЛКИ
+   Обе лежат рядом со страницей (условие Ren: откат не должен требовать выкладки). Какая
+   из них поедет, решает ФАКТ загрузки, а не разбор UserAgent: UA врёт, а неудавшийся
+   импорт - это факт. Разница по весу мала (494 КБ gzip против 529), и держать вторую
+   ради вебвью, которого мы не видели живьём, дешевле, чем узнать о несовместимости от
+   человека.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+let pdfjs = null, PDFJS_BUILD = '';
+const PDFJS_BUILDS = [['.', 'modern'], ['./legacy', 'legacy']];
+async function loadOne(i) {
+  if (i >= PDFJS_BUILDS.length) return null;
+  const [dir, tag] = PDFJS_BUILDS[i];
+  try {
+    const lib = await import(dir + '/pdf.min.mjs');
+    lib.GlobalWorkerOptions.workerSrc = dir + '/pdf.worker.min.mjs';
+    PDFJS_BUILD = tag;
+    return lib;
+  } catch (e) {
+    console.log('[pdf] сборка ' + tag + ' не поднялась: ' + e);
+    return null;
+  }
+}
+async function loadPdfjs() {
+  for (let i = 0; i < PDFJS_BUILDS.length; i++) {
+    const lib = await loadOne(i);
+    if (lib) return lib;
+  }
+  return null;
+}
+/* ═══ ОТКАТ НА LEGACY ИДЁТ И ПО ОТКАЗУ В РАБОТЕ, А НЕ ТОЛЬКО ПО ОТКАЗУ ИМПОРТА ═══
+   НАЙДЕНО БРАУЗЕРНЫМ ПРОГОНОМ, а не чтением: в Chromium 1194 современная сборка
+   ИМПОРТИРУЕТСЯ БЕЗ ЕДИНОЙ ОШИБКИ и падает уже на документе -
+   `this[#Yr].getOrInsertComputed is not a function`. Лестница по импорту такого не ловит
+   по построению, и человек на старом вебвью получал бы сырую строку чужой ошибки вместо
+   отката, ради которого вторая сборка и лежит рядом (условие Ren: откат без переделки). */
+async function pdfjsFallback() {
+  if (PDFJS_BUILD === 'legacy') return false;
+  const lib = await loadOne(1);
+  if (!lib) return false;
+  pdfjs = lib;
+  console.log('[pdf] современная сборка не сработала на документе - перешёл на legacy');
+  return true;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   СОСТОЯНИЕ. Порядок страниц и повороты живут ЗДЕСЬ, а применяются ОДНИМ вызовом на
+   песочнице. Гонять документ туда-сюда на каждый поворот значило бы платить сетью за
+   то, что человек делает пальцем.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+let TICKET = '', SID = '', DOC = null, NAME = '', MAXMB = 100;
+let PAGES = [];          // [{src:<номер в исходнике, с 1>, rot:<0|90|180|270>, sel:bool}]
+let DIRTY = false;       // есть ли несохранённые намерения
+let THUMBS = new Map();  // src -> canvas (рисуем один раз, перестановка их не меняет)
+
+const req = async (path, opt) => {
+  const o = opt || {};
+  o.headers = Object.assign({ 'X-Init-Data': INIT }, o.headers || {});
+  const r = await fetch(path, o);
+  let j = null;
+  try { j = await r.json(); } catch (e) { j = null; }
+  return { status: r.status, j: j };
+};
+
+/* ── билет ─────────────────────────────────────────────────────────────────────── */
+async function ticket() {
+  if (TICKET) return TICKET;
+  const r = await req(API + '/pdf/ticket', { method: 'POST', body: '{}' });
+  if (r.status !== 200 || !r.j || !r.j.ticket) {
+    const why = (r.j && (r.j.error || r.j.human)) || ('HTTP ' + r.status);
+    throw new Error('пропуск не выдан: ' + why);
+  }
+  TICKET = r.j.ticket; SID = r.j.sid;
+  return TICKET;
+}
+const u = (p) => BASE + p + '?ticket=' + encodeURIComponent(TICKET);
+
+/* ── загрузка файла ────────────────────────────────────────────────────────────── */
+async function upload(f) {
+  const off = whyOff();
+  if (off) { say(off, 'bad'); return; }
+  if (f.size > MAXMB * 1048576) { say(T.big(MAXMB), 'bad'); return; }
+  say(T.sending);
+  try {
+    await ticket();
+    /* ИМЯ ЕДЕТ PERCENT-ENCODED: в HTTP-заголовке сырой UTF-8 не переживает дорогу
+       (спецификация разрешает там latin-1), и «отчёт.pdf» приехал бы мусором. Приём
+       раскодирует. Проверено живым прогоном службы: без этого имя схлопывалось в « .pdf». */
+    const r = await fetch(u('/pdf/upload'), {
+      method: 'POST', body: f,
+      headers: { 'X-Pdf-Name': encodeURIComponent(f.name || 'document.pdf') },
+    });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || !j || !j.ok) {
+      say((j && (j.human || j.error)) || ('HTTP ' + r.status), 'bad');
+      return;
+    }
+    NAME = j.name || f.name || 'document.pdf';
+    await render(f);
+    say('');
+  } catch (e) {
+    say(String(e && e.message || e), 'bad');
+  }
+}
+
+/* ── отрисовка ─────────────────────────────────────────────────────────────────── */
+async function render(fileOrBytes) {
+  if (!pdfjs) { say('pdf.js не поднялся - показать страницы нечем.', 'bad'); return; }
+  say(T.loading);
+  /* БАЙТЫ БЕРЁМ ЗАНОВО НА КАЖДУЮ ПОПЫТКУ, И ЭТО НЕ ПЕДАНТИЗМ: pdf.js ПЕРЕДАЁТ буфер
+     воркеру, то есть ОТСОЕДИНЯЕТ его. Замер: вторая попытка на том же буфере падала
+     `Cannot perform Construct on a detached ArrayBuffer` - то есть откат на legacy был бы
+     мёртвым по построению. Из файла байты читаются заново и лишней памяти в обычном пути
+     это не стоит. */
+  const bytes = async () => (fileOrBytes instanceof Blob
+    ? await fileOrBytes.arrayBuffer()
+    : fileOrBytes.slice(0));
+  /* ОТКАТ ОБНИМАЕТ ВЕСЬ ПЕРВЫЙ ПРОХОД, А НЕ ОДИН `getDocument`. Сборка ломается и на
+     отрисовке страницы тоже (замер: `getOrInsertComputed` прилетел из `page.render`, а не
+     из разбора документа), и узкий try поймал бы только половину случаев. */
+  try {
+    await renderWith(await bytes());
+  } catch (e) {
+    if (!(await pdfjsFallback())) throw e;
+    await renderWith(await bytes());
+  }
+}
+
+async function renderWith(buf) {
+  DOC = await pdfjs.getDocument({ data: new Uint8Array(buf) }).promise;
+  PAGES = [];
+  for (let i = 1; i <= DOC.numPages; i++) PAGES.push({ src: i, rot: 0, sel: false });
+  THUMBS.clear();
+  DIRTY = false;
+  $('drop').hidden = true;
+  $('tools').hidden = false;
+  $('bar').hidden = false;
+  await paint();
+}
+
+async function thumb(src) {
+  if (THUMBS.has(src)) return THUMBS.get(src);
+  const page = await DOC.getPage(src);
+  const vp = page.getViewport({ scale: 1 });
+  const scale = Math.min(1.4, 190 / vp.width);
+  const v = page.getViewport({ scale: scale });
+  const c = document.createElement('canvas');
+  c.width = Math.ceil(v.width); c.height = Math.ceil(v.height);
+  await page.render({ canvasContext: c.getContext('2d'), viewport: v }).promise;
+  THUMBS.set(src, c);
+  return c;
+}
+
+async function paint() {
+  const g = $('grid');
+  g.textContent = '';
+  for (let i = 0; i < PAGES.length; i++) {
+    const p = PAGES[i];
+    const d = document.createElement('div');
+    d.className = 'pg' + (p.sel ? ' sel' : '');
+    d.dataset.i = String(i);
+    const c = await thumb(p.src);
+    const shown = c.cloneNode(true);
+    shown.getContext('2d').drawImage(c, 0, 0);
+    /* ПОВОРОТ ПОКАЗЫВАЕМ CSS-ОМ, А ПРИМЕНЯЕМ НА ПЕСОЧНИЦЕ. Перерисовывать страницу
+       ради предпросмотра значило бы платить временем за то, что видно и так. */
+    if (p.rot) shown.style.transform = 'rotate(' + p.rot + 'deg)';
+    d.appendChild(shown);
+    const n = document.createElement('div');
+    n.className = 'n';
+    n.textContent = (i + 1) + (p.src !== i + 1 ? ' (' + p.src + ')' : '')
+                  + (p.rot ? ' ' + p.rot + '°' : '');
+    d.appendChild(n);
+    const x = document.createElement('button');
+    x.className = 'x'; x.textContent = '✕'; x.title = T.del;
+    x.onclick = (ev) => { ev.stopPropagation(); dropPage(i); };
+    d.appendChild(x);
+    d.onclick = () => { p.sel = !p.sel; paint(); };
+    g.appendChild(d);
+  }
+  const nsel = PAGES.filter((p) => p.sel).length;
+  $('sub').textContent = (NAME ? NAME + ' · ' : '') + T.pages(PAGES.length)
+                       + (nsel ? T.sel(nsel) : '');
+  wireDrag();
+}
+
+function dropPage(i) {
+  if (PAGES.length <= 1) { say(T.delAll, 'bad'); return; }
+  PAGES.splice(i, 1); DIRTY = true; say(''); paint();
+}
+
+/* ═══ ПЕРЕТАСКИВАНИЕ НА POINTER EVENTS, А НЕ НА HTML5 DRAG ═══
+   HTML5 drag-and-drop на мобильных не работает вовсе - там нет `dragstart`. Pointer
+   events одинаковы для мыши и пальца, поэтому одна реализация закрывает обе платформы, и
+   ветки «если телефон» здесь нет ни одной. */
+function wireDrag() {
+  let from = -1, ghost = null;
+  const cards = [...document.querySelectorAll('.pg')];
+  cards.forEach((el) => {
+    el.onpointerdown = (e) => {
+      if (e.target.classList.contains('x')) return;
+      from = +el.dataset.i;
+      ghost = el;
+      el.setPointerCapture(e.pointerId);
+      el.classList.add('drag');
+    };
+    el.onpointermove = (e) => {
+      if (from < 0 || ghost !== el) return;
+      const t = document.elementFromPoint(e.clientX, e.clientY);
+      const card = t && t.closest ? t.closest('.pg') : null;
+      cards.forEach((c) => c.classList.remove('over'));
+      if (card && card !== el) card.classList.add('over');
+    };
+    el.onpointerup = (e) => {
+      if (from < 0 || ghost !== el) return;
+      const t = document.elementFromPoint(e.clientX, e.clientY);
+      const card = t && t.closest ? t.closest('.pg') : null;
+      el.classList.remove('drag');
+      cards.forEach((c) => c.classList.remove('over'));
+      const to = card ? +card.dataset.i : -1;
+      const was = from;
+      from = -1; ghost = null;
+      if (to >= 0 && to !== was) {
+        const [m] = PAGES.splice(was, 1);
+        PAGES.splice(to, 0, m);
+        DIRTY = true; say(''); paint();
+      }
+    };
+  });
+}
+
+/* ── операции ──────────────────────────────────────────────────────────────────── */
+function selIdx() { return PAGES.map((p, i) => p.sel ? i : -1).filter((i) => i >= 0); }
+
+function rotate(deg) {
+  const idx = selIdx();
+  const target = idx.length ? idx : PAGES.map((_p, i) => i);
+  target.forEach((i) => { PAGES[i].rot = (((PAGES[i].rot + deg) % 360) + 360) % 360; });
+  DIRTY = true; say(''); paint();
+}
+
+/* ═══ ОДИН ВЫЗОВ НА ВСЁ НАМЕРЕНИЕ, А НЕ ПО ВЫЗОВУ НА ТАП ═══
+   Порядок, удаление и повороты копятся на странице и уезжают вместе: две операции
+   означали бы два прохода по стомегабайтному документу и два повода разойтись
+   состояниями. Порядок применяется ПЕРВЫМ, повороты - вторым и уже по НОВЫМ номерам:
+   наоборот они легли бы на страницы, которых в результате нет. */
+async function apply(extra) {
+  const off = whyOff();
+  if (off) { say(off, 'bad'); return false; }
+  say(T.working);
+  try {
+    const order = PAGES.map((p) => p.src).join(',');
+    const r1 = await fetch(u('/pdf/op'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ op: 'pages', order: order }),
+    });
+    const j1 = await r1.json().catch(() => null);
+    if (!r1.ok || !j1 || !j1.ok) {
+      say((j1 && (j1.human || j1.error)) || ('HTTP ' + r1.status), 'bad'); return false;
+    }
+    const groups = {};
+    PAGES.forEach((p, i) => {
+      if (p.rot) (groups[p.rot] = groups[p.rot] || []).push(i + 1);
+    });
+    for (const deg of Object.keys(groups)) {
+      const r2 = await fetch(u('/pdf/op'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ op: 'rotate', turn: deg, pages: groups[deg].join(',') }),
+      });
+      const j2 = await r2.json().catch(() => null);
+      if (!r2.ok || !j2 || !j2.ok) {
+        say((j2 && (j2.human || j2.error)) || ('HTTP ' + r2.status), 'bad'); return false;
+      }
+    }
+    if (extra) {
+      const r3 = await fetch(u('/pdf/op'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(extra),
+      });
+      const j3 = await r3.json().catch(() => null);
+      if (!r3.ok || !j3 || !j3.ok) {
+        say((j3 && (j3.human || j3.error)) || ('HTTP ' + r3.status), 'bad'); return false;
+      }
+    }
+    say(T.ready, 'ok');
+    return true;
+  } catch (e) {
+    say(String(e && e.message || e), 'bad');
+    return false;
+  }
+}
+
+/* ── отдача ────────────────────────────────────────────────────────────────────── */
+async function save() {
+  if (!(await apply(null))) return;
+  /* СКАЧИВАНИЕ ИДЁТ ССЫЛКОЙ, А НЕ fetch+blob: стомегабайтный ответ, собранный в память
+     вкладки, на телефоне её и роняет. Билет поэтому едет в query - к ссылке, которую
+     открывает сам браузер, заголовок не прицепить ничем. */
+  const a = document.createElement('a');
+  a.href = u('/pdf/result');
+  a.download = NAME || 'document.pdf';
+  document.body.appendChild(a); a.click(); a.remove();
+  /* СЕССИЯ ЗАКРЫВАЕТСЯ НА ТОЙ СТОРОНЕ, СРАЗУ ПОСЛЕ ОТДАЧИ. Здесь мы только говорим об
+     этом человеку: держать кнопку «Скачать» живой над снесённой сессией значило бы
+     обещать то, что уже не выполнится. */
+  setTimeout(() => { say(T.gone); $('bar').hidden = true; }, 1200);
+}
+
+async function toChat() {
+  if (!INIT) { say(T.noSign, 'bad'); return; }
+  if (!(await apply(null))) return;
+  const r = await req(API + '/signal', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ kind: 'pdf', sid: SID }),
+  });
+  if (r.status !== 200) { say('не отправилось: HTTP ' + r.status, 'bad'); return; }
+  say(T.sentChat, 'ok');
+  $('bar').hidden = true;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   САМООБНОВЛЕНИЕ. Спрашиваем WORKER'А, а не файл рядом со страницей: сосед лежит на том
+   же хосте и попадает в тот же кэш вебвью, то есть отвечает ровно так же устарело -
+   старая страница спрашивала бы у старого файла, свежа ли она, и получала «да».
+   ЧЕТЫРЕ ИСХОДА, А НЕ ДВА: свежая / есть новее (перезагрузка) / договор разошёлся
+   (перезагрузка НЕ лечит) / перезагрузились и всё равно старые (сами не можем).
+   ═══════════════════════════════════════════════════════════════════════════════ */
+async function checkVersion() {
+  if (!API) return;
+  try {
+    const r = await fetch(API + '/appver?app=pdfstudio');
+    const j = await r.json();
+    if (!j || j.error) return;                       // молчание не мешает работать
+    if (!j.ver || j.ver === VERSION) return;
+    if (Q.get('r') === '1') { note(T.oldStuck); return; }
+    note(T.old);
+    const q = new URLSearchParams(location.search);
+    q.set('v', j.ver); q.set('r', '1');
+    location.replace(location.pathname + '?' + q.toString());
+  } catch (e) { /* сеть молчит - работаем как есть */ }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ПОДПИСЬ НА СТРАНИЦЕ
+   ═══════════════════════════════════════════════════════════════════════════════
+   ГЛАВНОЕ РЕШЕНИЕ: НАРУЖУ ЕДУТ ДОЛИ КАДРА, А НЕ КООРДИНАТЫ PDF.
+   `viewport.convertToPdfPoint` у pdf.js масштаб съедает верно, но у страницы с
+   `/Rotate 90` отдаёт координаты MEDIABOX, а воркер строит накладку в ВИДИМОМ размере -
+   это две разные системы, и подпись на повёрнутой странице легла бы не туда. Доли же
+   считаются от кадра, который эта самая страница и нарисовала, поэтому системе координат
+   PDF взяться неоткуда. Проверено рендером на всех четырёх формах листа.
+   ═══════════════════════════════════════════════════════════════════════════════ */
+let SIG_PNG = '';        // dataURL выбранной/нарисованной подписи
+let SIG_PAGE = 0;        // индекс страницы в PAGES, куда ставим
+let SIG_PHASE = '';      // '' | 'pick' | 'place'
+let SIG_LIST = [];       // [{num, name, png}] из профиля
+let SIG_PICK = -1;       // выбранная сохранённая (её имя предложим при «в профиль»)
+
+const sigSay = (t) => { $('sigSay').textContent = t || ''; };
+
+/* ── своя карточка вместо prompt (в вебвью Telegram его не показывают) ─────────── */
+function askText(title, dflt) {
+  return new Promise((res) => {
+    $('askTtl').textContent = title;
+    $('askInput').value = dflt || '';
+    $('askNo').textContent = T.cancel;
+    $('askYes').textContent = T.ok;
+    $('ask').classList.add('on');
+    setTimeout(() => { try { $('askInput').focus(); } catch (e) {} }, 60);
+    const done = (v) => { $('ask').classList.remove('on'); res(v); };
+    $('askNo').onclick = () => done(null);
+    $('askYes').onclick = () => done($('askInput').value);
+    $('askInput').onkeydown = (e) => { if (e.key === 'Enter') done($('askInput').value); };
+  });
+}
+
+/* ── ящик сигналов: положить и дождаться ответа ────────────────────────────────
+   ТРИ МОЛЧАНИЯ РАЗЛИЧИМЫ. «Бот не забрал», «забрал и работает дольше окна» и «ответа нет»
+   лечатся по-разному, и одна фраза на все три отправляла бы чинить не то (урок комнаты). */
+async function signalAsk(body, tries) {
+  const r = await req(API + '/signal', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (r.status !== 200 || !r.j || !r.j.id) return { why: 'HTTP ' + r.status };
+  const id = r.j.id;
+  for (let i = 0; i < (tries || 20); i++) {
+    await new Promise((z) => setTimeout(z, 1200));
+    const g = await req(API + '/result?id=' + encodeURIComponent(id));
+    if (g.status === 200 && g.j && g.j.state === 'done') return { res: g.j.res || {} };
+  }
+  return { why: 'timeout' };
+}
+
+/* ── холст рисования ───────────────────────────────────────────────────────────── */
+function sigPadInit() {
+  const c = $('sigPad');
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  const w = c.clientWidth || 300, h = c.clientHeight || 190;
+  c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.clearRect(0, 0, w, h);
+  g.lineWidth = 3; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#101020';
+  let drawing = false, drawn = false;
+  const at = (e) => {
+    const r = c.getBoundingClientRect();
+    return [e.clientX - r.left, e.clientY - r.top];
+  };
+  c.onpointerdown = (e) => {
+    e.preventDefault();
+    drawing = true; drawn = true;
+    const [x, y] = at(e);
+    g.beginPath(); g.moveTo(x, y);
+    try { c.setPointerCapture(e.pointerId); } catch (z) {}
+    SIG_PICK = -1; sigPaintSaved();
+  };
+  c.onpointermove = (e) => {
+    if (!drawing) return;
+    e.preventDefault();
+    const [x, y] = at(e);
+    g.lineTo(x, y); g.stroke();
+  };
+  c.onpointerup = c.onpointercancel = () => { drawing = false; };
+  c.__drawn = () => drawn;
+  c.__reset = () => { g.clearRect(0, 0, w, h); drawn = false; };
+}
+
+/* ЧТО ЗАБИРАЕМ С ХОЛСТА: только то, что нарисовано, а не весь прямоугольник. Пустые поля
+   вокруг росчерка на странице превратились бы в невидимый, но занятый кусок листа - и
+   человек не понял бы, почему подпись не встаёт вплотную к строке. */
+function sigFromPad() {
+  const c = $('sigPad');
+  if (!c.__drawn || !c.__drawn()) return '';
+  const g = c.getContext('2d');
+  const d = g.getImageData(0, 0, c.width, c.height).data;
+  let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+  for (let y = 0; y < c.height; y++) {
+    for (let x = 0; x < c.width; x++) {
+      if (d[(y * c.width + x) * 4 + 3] > 8) {
+        if (x < x0) x0 = x;
+        if (x > x1) x1 = x;
+        if (y < y0) y0 = y;
+        if (y > y1) y1 = y;
+      }
+    }
+  }
+  if (x1 < 0) return '';
+  const pad = 6;
+  x0 = Math.max(0, x0 - pad); y0 = Math.max(0, y0 - pad);
+  x1 = Math.min(c.width - 1, x1 + pad); y1 = Math.min(c.height - 1, y1 + pad);
+  const o = document.createElement('canvas');
+  o.width = x1 - x0 + 1; o.height = y1 - y0 + 1;
+  o.getContext('2d').drawImage(c, x0, y0, o.width, o.height, 0, 0, o.width, o.height);
+  return o.toDataURL('image/png');
+}
+
+/* ── сохранённые подписи ───────────────────────────────────────────────────────── */
+function sigPaintSaved() {
+  const box = $('sigSaved');
+  box.textContent = '';
+  $('sigSavedTtl').textContent = SIG_LIST.length ? T.signSaved : T.signNoSaved;
+  SIG_LIST.forEach((it, i) => {
+    const d = document.createElement('div');
+    d.className = 'sigCard' + (i === SIG_PICK ? ' sel' : '');
+    const im = document.createElement('img');
+    im.src = 'data:image/png;base64,' + it.png;
+    d.appendChild(im);
+    const nm = document.createElement('div');
+    nm.className = 'nm'; nm.textContent = it.name || ('#' + it.num);
+    d.appendChild(nm);
+    const x = document.createElement('button');
+    x.className = 'x'; x.textContent = '✕';
+    x.onclick = async (ev) => {
+      ev.stopPropagation();
+      sigSay(T.working);
+      const r = await signalAsk({ kind: 'pdfsig', act: 'sig_del', n: it.num });
+      if (r.res && r.res.signs) { SIG_LIST = r.res.signs; SIG_PICK = -1; sigPaintSaved(); }
+      sigSay((r.res && r.res.note) || (r.why ? T.signWait : ''));
+    };
+    d.appendChild(x);
+    d.onclick = () => {
+      SIG_PICK = i;
+      SIG_PNG = 'data:image/png;base64,' + it.png;
+      $('sigPad').__reset && $('sigPad').__reset();
+      sigPaintSaved();
+      sigSay('');
+    };
+    box.appendChild(d);
+  });
+}
+
+async function sigLoadSaved() {
+  if (!INIT || !API) return;
+  const r = await signalAsk({ kind: 'pdfsig', act: 'sig_list' });
+  if (r.res && r.res.signs) { SIG_LIST = r.res.signs; sigPaintSaved(); }
+  else if (r.why) sigSay(T.signWait);
+}
+
+/* ── размещение ────────────────────────────────────────────────────────────────── */
+async function sigPlace() {
+  SIG_PHASE = 'place';
+  $('sigPickBox').hidden = true;
+  $('sigPlaceBox').hidden = false;
+  $('bSigGo').textContent = T.signGo;
+  $('bSigKeep').hidden = false;
+  await sigPaintPage();
+}
+
+async function sigPaintPage() {
+  const p = PAGES[SIG_PAGE];
+  const cv = $('sigPageCv');
+  const page = await DOC.getPage(p.src);
+  const v0 = page.getViewport({ scale: 1, rotation: (page.rotate + p.rot) % 360 });
+  const wide = Math.min(520, (window.innerWidth || 360) - 56);
+  const sc = wide / v0.width;
+  const v = page.getViewport({ scale: sc, rotation: (page.rotate + p.rot) % 360 });
+  cv.width = Math.ceil(v.width); cv.height = Math.ceil(v.height);
+  cv.style.width = Math.ceil(v.width) + 'px';
+  await page.render({ canvasContext: cv.getContext('2d'), viewport: v }).promise;
+  $('sigPage').textContent = T.signPage(SIG_PAGE + 1, PAGES.length);
+  const img = $('sigImg');
+  img.src = SIG_PNG;
+  await new Promise((z) => { if (img.complete) z(); else img.onload = img.onerror = z; });
+  const box = $('sigBox');
+  const bw = Math.min(cv.clientWidth * 0.34, cv.clientWidth - 8);
+  const ar = (img.naturalHeight || 1) / (img.naturalWidth || 1);
+  box.style.width = bw + 'px';
+  box.style.height = (bw * ar) + 'px';
+  box.style.left = Math.round(cv.clientWidth * 0.55) + 'px';
+  box.style.top = Math.round(cv.clientHeight * 0.72) + 'px';
+  sigClamp();
+}
+
+/* ГРАНИЦЫ ДЕРЖИТ СТРАНИЦА, А ВОРКЕР ИХ ПРОВЕРЯЕТ. Два забора, и это не дублирование:
+   здесь человек не может перетащить подпись за лист, там - никто не может прислать такое
+   в обход страницы (закон №32). */
+function sigClamp() {
+  const cv = $('sigPageCv'), box = $('sigBox');
+  const W = cv.clientWidth, H = cv.clientHeight;
+  let w = box.offsetWidth, h = box.offsetHeight;
+  w = Math.max(24, Math.min(w, W)); h = Math.max(12, Math.min(h, H));
+  let l = Math.max(0, Math.min(box.offsetLeft, W - w));
+  let t = Math.max(0, Math.min(box.offsetTop, H - h));
+  box.style.width = w + 'px'; box.style.height = h + 'px';
+  box.style.left = l + 'px'; box.style.top = t + 'px';
+}
+
+function sigWireBox() {
+  const box = $('sigBox'), grip = $('sigGrip'), cv = $('sigPageCv');
+  let mode = '', sx = 0, sy = 0, sl = 0, st = 0, sw = 0, sh = 0;
+  const start = (e, m) => {
+    e.preventDefault(); e.stopPropagation();
+    mode = m; sx = e.clientX; sy = e.clientY;
+    sl = box.offsetLeft; st = box.offsetTop; sw = box.offsetWidth; sh = box.offsetHeight;
+    try { (m === 'size' ? grip : box).setPointerCapture(e.pointerId); } catch (z) {}
+  };
+  box.addEventListener('pointerdown', (e) => { if (e.target !== grip) start(e, 'move'); });
+  grip.addEventListener('pointerdown', (e) => start(e, 'size'));
+  const move = (e) => {
+    if (!mode) return;
+    e.preventDefault();
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (mode === 'move') {
+      box.style.left = (sl + dx) + 'px';
+      box.style.top = (st + dy) + 'px';
+    } else {
+      /* ПРОПОРЦИЮ ДЕРЖИМ: растянутая подпись - это чужой почерк, а не размер. */
+      const k = Math.max(24, sw + dx) / sw;
+      box.style.width = (sw * k) + 'px';
+      box.style.height = (sh * k) + 'px';
+    }
+    sigClamp();
+  };
+  box.addEventListener('pointermove', move);
+  grip.addEventListener('pointermove', move);
+  const stop = () => { mode = ''; };
+  box.addEventListener('pointerup', stop); box.addEventListener('pointercancel', stop);
+  grip.addEventListener('pointerup', stop); grip.addEventListener('pointercancel', stop);
+  cv.addEventListener('pointerdown', (e) => e.preventDefault());
+}
+
+/* ── поставить ─────────────────────────────────────────────────────────────────── */
+async function sigApply() {
+  const off = whyOff();
+  if (off) { sigSay(off); return; }
+  const cv = $('sigPageCv'), box = $('sigBox');
+  const nx = box.offsetLeft / cv.clientWidth;
+  const ny = box.offsetTop / cv.clientHeight;
+  const nw = box.offsetWidth / cv.clientWidth;
+  const nh = box.offsetHeight / cv.clientHeight;
+  sigSay(T.working);
+  try {
+    const blob = await (await fetch(SIG_PNG)).blob();
+    const r = await fetch(u('/pdf/sig'), { method: 'POST', body: blob });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || !j || !j.ok) {
+      sigSay((j && (j.human || j.error)) || ('HTTP ' + r.status));
+      return;
+    }
+  } catch (e) {
+    sigSay(String(e && e.message || e));
+    return;
+  }
+  const ok = await apply({ op: 'sign', pages: String(SIG_PAGE + 1),
+                           nx: nx.toFixed(4), ny: ny.toFixed(4),
+                           nw: nw.toFixed(4), nh: nh.toFixed(4) });
+  if (!ok) { sigSay($('say').textContent || T.working); return; }
+  sigClose();
+  say(T.signPlaced, 'ok');
+}
+
+async function sigKeep() {
+  if (!INIT) { sigSay(T.noSign); return; }
+  const dflt = (SIG_PICK >= 0 && SIG_LIST[SIG_PICK]) ? SIG_LIST[SIG_PICK].name : '';
+  const nm = await askText(T.signAskName, dflt);
+  if (nm === null) return;
+  sigSay(T.working);
+  try {
+    const blob = await (await fetch(SIG_PNG)).blob();
+    const r = await fetch(u('/pdf/sig'), { method: 'POST', body: blob });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || !j || !j.ok) {
+      sigSay((j && (j.human || j.error)) || ('HTTP ' + r.status));
+      return;
+    }
+  } catch (e) { sigSay(String(e && e.message || e)); return; }
+  const rr = await signalAsk({ kind: 'pdfsig', act: 'sig_save', sid: SID, nm2: nm });
+  if (rr.res && rr.res.signs) { SIG_LIST = rr.res.signs; SIG_PICK = -1; sigPaintSaved(); }
+  sigSay((rr.res && rr.res.note) || (rr.why ? T.signWait : ''));
+}
+
+function sigClose() {
+  SIG_PHASE = '';
+  $('sig').classList.remove('on');
+  $('sigBar').hidden = true;
+}
+
+async function sigOpen() {
+  if (!DOC) return;
+  const off = whyOff();
+  if (off) { say(off, 'bad'); return; }
+  SIG_PHASE = 'pick';
+  SIG_PNG = ''; SIG_PICK = -1;
+  /* СТАВИМ НА ВЫДЕЛЕННУЮ, А БЕЗ ВЫДЕЛЕНИЯ - НА ПОСЛЕДНЮЮ, И ЭТО ВИДНО СТРОКОЙ. Молчаливое
+     «наверное, сюда» здесь недопустимо: подпись не на той странице человек заметит уже
+     после отправки файла. */
+  const sel = PAGES.map((p, i) => p.sel ? i : -1).filter((i) => i >= 0);
+  SIG_PAGE = sel.length ? sel[0] : PAGES.length - 1;
+  $('sigTtl').textContent = T.signTtl;
+  $('sigNote').textContent = T.signNote;
+  $('sigPickBox').hidden = false;
+  $('sigPlaceBox').hidden = true;
+  $('bSigClear').textContent = T.signClear;
+  $('bSigFile').textContent = T.signFile;
+  $('bSigCancel').textContent = T.signCancel;
+  $('bSigKeep').textContent = T.signKeep;
+  $('bSigKeep').hidden = true;
+  $('bSigGo').textContent = T.signNext;
+  $('sigDrawTtl').textContent = T.signDraw;
+  $('sig').classList.add('on');
+  $('sigBar').hidden = false;
+  sigSay('');
+  sigPaintSaved();
+  sigPadInit();
+  sigLoadSaved();
+}
+
+/* ═══ ШОВ ДЛЯ БРАУЗЕРНОЙ ПРОБЫ ═══
+   Страница - ES-модуль, и её внутренности снаружи не видны. Проба, которая ради этого
+   завела бы СВОЮ копию обрезки по чернилам, проверяла бы себя, а не продукт (закон №40),
+   поэтому наружу отдаётся ссылка на боевые функции. Тот же ход, что `window.__SND_LAST`
+   на странице комнаты. Ничего, кроме чтения, здесь нет: поставить подпись через этот шов
+   нельзя - для этого нужны билет и приём. */
+window.__studio = {
+  fromPad: () => sigFromPad(),
+  page: () => SIG_PAGE,
+  phase: () => SIG_PHASE,
+  png: () => SIG_PNG.slice(0, 24),
+};
+
+async function sigNext() {
+  if (SIG_PHASE === 'pick') {
+    const drawn = sigFromPad();
+    if (drawn) SIG_PNG = drawn;
+    if (!SIG_PNG) { sigSay(T.signEmpty); return; }
+    await sigPlace();
+    return;
+  }
+  await sigApply();
+}
+
+/* ── подъём ────────────────────────────────────────────────────────────────────── */
+function texts() {
+  $('ttl').textContent = T.ttl;
+  $('drop').textContent = T.drop;
+  $('bAll').textContent = T.all; $('bNone').textContent = T.none;
+  $('bKeep').textContent = T.keep; $('bDel').textContent = T.del;
+  $('bZip').textContent = T.zip; $('bReset').textContent = T.reset;
+  $('bSign').textContent = T.sign;
+  $('bSave').textContent = T.save; $('bChat').textContent = T.chat;
+  $('foot').textContent = T.foot;
+  document.title = T.ttl;
+}
+
+(async function boot() {
+  texts();
+  if (tg) { try { tg.ready(); tg.expand(); } catch (e) { /* браузер */ } }
+  const off = whyOff();
+  if (off) { $('sub').textContent = ''; say(off, 'bad'); }
+  else $('sub').textContent = '';
+  checkVersion();
+  pdfjs = await loadPdfjs();
+  if (!pdfjs) note('pdf.js не загрузился - страницы показать нечем. '
+                 + 'Скачивание и отправка в чат при этом работают.');
+
+  $('drop').onclick = () => $('file').click();
+  $('file').onchange = (e) => { const f = e.target.files[0]; if (f) upload(f); };
+  ['dragenter', 'dragover'].forEach((n) => document.addEventListener(n, (e) => {
+    e.preventDefault(); $('drop').classList.add('hot');
+  }));
+  ['dragleave', 'drop'].forEach((n) => document.addEventListener(n, (e) => {
+    e.preventDefault(); $('drop').classList.remove('hot');
+  }));
+  document.addEventListener('drop', (e) => {
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (!f) return;
+    if (!/\.pdf$/i.test(f.name || '')) { say(T.notPdf, 'bad'); return; }
+    upload(f);
+  });
+  $('bAll').onclick = () => { PAGES.forEach((p) => p.sel = true); paint(); };
+  $('bNone').onclick = () => { PAGES.forEach((p) => p.sel = false); paint(); };
+  $('bRotL').onclick = () => rotate(-90);
+  $('bRotR').onclick = () => rotate(90);
+  $('bKeep').onclick = () => {
+    const idx = selIdx();
+    if (!idx.length) { say(T.pick, 'bad'); return; }
+    if (idx.length === PAGES.length) { say(T.keepAll, 'bad'); return; }
+    PAGES = PAGES.filter((p) => p.sel);
+    PAGES.forEach((p) => p.sel = false);
+    DIRTY = true; say(''); paint();
+  };
+  $('bDel').onclick = () => {
+    const idx = selIdx();
+    if (!idx.length) { say(T.pick, 'bad'); return; }
+    if (idx.length === PAGES.length) { say(T.delAll, 'bad'); return; }
+    PAGES = PAGES.filter((p) => !p.sel);
+    DIRTY = true; say(''); paint();
+  };
+  $('bZip').onclick = async () => { await apply({ op: 'compress' }); };
+  $('bSign').onclick = sigOpen;
+  $('bSigCancel').onclick = sigClose;
+  $('bSigGo').onclick = sigNext;
+  $('bSigKeep').onclick = sigKeep;
+  $('bSigClear').onclick = () => {
+    const c = $('sigPad');
+    if (c.__reset) c.__reset();
+    SIG_PNG = ''; SIG_PICK = -1; sigPaintSaved(); sigSay('');
+  };
+  $('bSigFile').onclick = () => $('sigFile').click();
+  $('sigFile').onchange = (e) => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const fr = new FileReader();
+    fr.onload = () => {
+      /* ПРОВЕРЯЕМ КАРТИНКУ ЗАГРУЗКОЙ, А НЕ РАСШИРЕНИЕМ: имя приходит от файловой системы
+         и ничего не доказывает, а `img.onerror` - доказывает. Приём на песочнице спросит
+         то же самое у первых байт: два забора на разных концах, как у самого документа. */
+      const probe = new Image();
+      probe.onload = () => {
+        SIG_PNG = fr.result;
+        SIG_PICK = -1;
+        if ($('sigPad').__reset) $('sigPad').__reset();
+        sigPaintSaved();
+        sigSay('');
+      };
+      probe.onerror = () => sigSay(T.signBad);
+      probe.src = fr.result;
+    };
+    fr.onerror = () => sigSay(T.signBad);
+    fr.readAsDataURL(f);
+  };
+  sigWireBox();
+  $('bReset').onclick = () => {
+    if (!DOC) return;
+    PAGES = [];
+    for (let i = 1; i <= DOC.numPages; i++) PAGES.push({ src: i, rot: 0, sel: false });
+    DIRTY = false; say(''); paint();
+  };
+  $('bSave').onclick = save;
+  $('bChat').onclick = toChat;
+  $('bZclose').onclick = () => $('zoom').classList.remove('on');
+})();
+</script>
