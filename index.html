@@ -296,9 +296,10 @@ const T = {
     /* ЮРИДИЧЕСКАЯ ФОРМУЛИРОВКА - ТА ЖЕ, ЧТО У БОТА (`i18n['pdf.sign.note']`), слово в
        слово. Две редакции одного предупреждения разъехались бы на первой правке, и
        человек прочитал бы РАЗНОЕ в чате и в студии (закон №40). */
-    signNote: '✍️ Это ВИЗУАЛЬНАЯ подпись - картинка поверх страницы, как от руки на '
-            + 'распечатке. Юридической силы она не имеет и квалифицированной ЭЦП не '
-            + 'является: файл не заверен и подписант криптографически не подтверждён.',
+    /* ПОДСТАВЛЯЕТСЯ ПРИ ВЫКЛАДКЕ ИЗ i18n (`pdf_studio.page_html`). Своей копии здесь
+       больше НЕТ: формулировка юридически значимая, и читать разное в чате и в студии
+       человек не должен. Метка на месте - значит страницу открыли файлом, а не выкладкой. */
+    signNote: '✍️ Это ВИЗУАЛЬНАЯ подпись - картинка поверх страницы, как от руки на распечатке. Юридической силы она не имеет и квалифицированной ЭЦП не является: файл не заверен и подписант криптографически не подтверждён.',
     signSaved: 'Сохранённые подписи (тап - выбрать):',
     signNoSaved: 'Сохранённых подписей пока нет.',
     signDraw: 'Или нарисуй пальцем:',
@@ -344,10 +345,8 @@ const T = {
             + 'again from the chat.',
     sign: '✍️ Signature',
     signTtl: 'Signature on the page',
-    signNote: '✍️ This is a VISUAL signature - an image drawn over the page, like ink on a '
-            + 'printout. It carries no legal force and is not a qualified digital '
-            + 'signature: the file is not certified and the signer is not cryptographically '
-            + 'verified.',
+    /* Подставляется при выкладке из i18n - см. ru-половину выше. */
+    signNote: '✍️ This is a VISUAL signature - an image drawn over the page, like ink on a printout. It carries no legal force and is not a qualified digital signature: the file is not certified and the signer is not cryptographically verified.',
     signSaved: 'Saved signatures (tap to pick):',
     signNoSaved: 'No saved signatures yet.',
     signDraw: 'Or draw one with your finger:',
@@ -368,7 +367,7 @@ const T = {
   },
 }[LANG];
 
-const VERSION = 'bced0ae9f1d3';
+const VERSION = '3f6c7e2639cb';
 /* АДРЕСА - ПАРАМЕТРОМ ССЫЛКИ СИЛЬНЕЕ ЗАШИТОГО ПРИ ВЫКЛАДКЕ. Причина записана в
    publish_static.page_url и стоила полдня: `https://hara-search.laynenorstrud.workers.dev` подставляется В МОМЕНТ ДЕПЛОЯ, и
    если Worker тогда не был в реестре, страница остаётся без адреса НАВСЕГДА. Ссылку же
