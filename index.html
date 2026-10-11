@@ -125,15 +125,29 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
    `touch-action:none` обязателен и на холсте рисования, и на рамке размещения: без него
    жест пальца уезжает в ПРОКРУТКУ страницы, и человек вместо росчерка листает документ.
    Урок оплачен доской в комнате, оттуда же и pointer events вместо touch/mouse. */
-#sig{
+/* ═══ ПОЛНОЭКРАННЫЙ ЭКРАН И ЕГО НИЖНЯЯ ПАНЕЛЬ - ОДНИМ КЛАССОМ НА ВСЕ ЧЕТЫРЕ ═══
+   Подпись, скрытие, формы и сравнение выглядят одинаково НЕ случайно: человек один раз
+   понял, что карточка поверх сетки это «отдельное дело с этим документом». Но описано это
+   было ЧЕТЫРЬМЯ копиями правил (три экрана плюс три панели), и копии УЖЕ РАЗОШЛИСЬ: у
+   панели подписи `padding` был 9px против 10px у двух других, а радиус карточки 12px
+   против 14px. Никто этого не заказывал - просто правку внесли в одно место из трёх.
+   Пятая копия ради сравнения версий повторила бы ровно историю закона №40 (четыре копии
+   правила ссылки разошлись на кавычке в href, и карточка не приходила вовсе). */
+.scr{
   position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.92); display:none;
   overflow:auto; padding:12px calc(12px + env(safe-area-inset-left)) 96px;
 }
-#sig.on{display:block}
-#sig .card{
+.scr.on{display:block}
+.scr .card{
   max-width:560px; margin:0 auto; background:var(--card); border:1px solid var(--line);
-  border-radius:12px; padding:12px;
+  border-radius:14px; padding:12px;
 }
+.scrBar{
+  position:fixed; left:0; right:0; bottom:0; z-index:61; display:flex; gap:8px;
+  padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:var(--card);
+  border-top:1px solid var(--line);
+}
+.scrBar button{flex:1}
 #sig h2{font-size:15px; margin:0 0 8px}
 #sigNote{
   margin:0 0 10px; padding:9px 11px; border-radius:9px; background:var(--warn-bg);
@@ -173,15 +187,6 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
    Устроен как экран форм и подписи - человек уже знает этот язык. Отличие одно и оно
    несущее: областей БОЛЬШЕ ОДНОЙ, поэтому обведённое складывается в список, и видно, что
    именно уйдёт, ДО нажатия. Скрытие необратимо, и «применилось не то» здесь дороже. */
-#rdt{
-  position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.92); display:none;
-  overflow:auto; padding:12px calc(12px + env(safe-area-inset-left)) 96px;
-}
-#rdt.on{display:block}
-#rdt .card{
-  max-width:560px; margin:0 auto; background:var(--card); border:1px solid var(--line);
-  border-radius:14px; padding:12px;
-}
 #rdt h2{font-size:16px; margin:0 0 8px}
 #rdtWarn{
   margin:0 0 10px; padding:9px 11px; font-size:13px; border-radius:10px;
@@ -202,25 +207,7 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
 .rdtDone{position:absolute; background:rgba(0,0,0,.72); pointer-events:none}
 #rdtList{font-size:13px; color:var(--dim); padding-top:8px}
 #rdtList div{padding:2px 0}
-#rdtBar{
-  position:fixed; left:0; right:0; bottom:0; z-index:61; display:flex; gap:8px;
-  padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:var(--card);
-  border-top:1px solid var(--line);
-}
-#rdtBar button{flex:1}
-/* ═══ ЭКРАН ФОРМ ═══
-   УСТРОЕН КАК ЭКРАН ПОДПИСИ, И ЭТО НЕ ЛЕНЬ: человек уже знает, что полноэкранная карточка
-   поверх сетки - это «отдельное дело с этим документом», и второй язык интерфейса в одной
-   аппке пришлось бы учить заново. */
-#frm{
-  position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.92); display:none;
-  overflow:auto; padding:12px calc(12px + env(safe-area-inset-left)) 96px;
-}
-#frm.on{display:block}
-#frm .card{
-  max-width:560px; margin:0 auto; background:var(--card); border:1px solid var(--line);
-  border-radius:14px; padding:12px;
-}
+/* ═══ ЭКРАН ФОРМ ═══ */
 #frm h2{font-size:16px; margin:0 0 8px}
 /* ПОЛЕ - СТРОКА С ПОДПИСЬЮ СВЕРХУ: имя поля в анкете бывает длинным («Фамилия, имя и
    отчество полностью»), и в одну строку с вводом оно не влезает ни на одном телефоне. */
@@ -249,18 +236,33 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
   position:absolute; right:-9px; bottom:-9px; width:20px; height:20px; border-radius:50%;
   background:var(--accent); border:2px solid #fff; touch-action:none; cursor:nwse-resize;
 }
-#frmBar{
-  position:fixed; left:0; right:0; bottom:0; z-index:61; display:flex; gap:8px;
-  padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:var(--card);
-  border-top:1px solid var(--line);
+/* ═══ ЭКРАН СРАВНЕНИЯ ВЕРСИЙ ═══
+   ПОДСВЕЧИВАЕМ НА ЛИСТЕ ВТОРОЙ ВЕРСИИ, и это решение, а не оформление: правка живёт ТАМ,
+   ГДЕ СЛОВА СТОЯТ СЕЙЧАС, и человек читает новую редакцию, сверяясь со старой. Удалённого
+   на этом листе НЕТ - ему отдельный список, иначе подсветка показывала бы пустое место.
+   ЦВЕТ БЕЗ ЛЕГЕНДЫ - ЭТО ЗАГАДКА, А НЕ ОТВЕТ: три вида различий (новое, заменённое,
+   переехавшее) различаются цветом, и подписи к цветам стоят рядом с листом. */
+#cmpWrap{position:relative; display:inline-block; max-width:100%}
+#cmpWrap canvas{max-width:100%; height:auto; display:block; border-radius:8px}
+.cmpHit{position:absolute; pointer-events:none; border-radius:2px}
+.cmpHit.ins{background:rgba(74,222,128,.34); outline:1px solid rgba(74,222,128,.85)}
+.cmpHit.rep{background:rgba(250,204,21,.34); outline:1px solid rgba(250,204,21,.9)}
+.cmpHit.mv{background:rgba(96,165,250,.30); outline:1px dashed rgba(96,165,250,.9)}
+#cmpLeg{display:flex; flex-wrap:wrap; gap:10px; font-size:12px; color:var(--dim); padding:8px 0}
+#cmpLeg i{display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:4px}
+#cmpSum{
+  font-size:13.5px; line-height:1.5; margin:8px 0; padding:9px 11px; border-radius:10px;
+  background:var(--warn-bg); color:var(--warn);
 }
-#frmBar button{flex:1}
-#sigBar{
-  position:fixed; left:0; right:0; bottom:0; z-index:61; background:var(--card);
-  border-top:1px solid var(--line); padding:9px 12px calc(9px + env(safe-area-inset-bottom));
-  display:flex; gap:8px;
-}
-#sigBar button{flex:1}
+#cmpSum.plain{background:rgba(255,255,255,.05); color:var(--fg)}
+#cmpWhat{font-size:12.5px; color:var(--dim); line-height:1.5; margin:0 0 10px}
+#cmpNav{display:flex; gap:8px; align-items:center; padding:0 0 8px}
+#cmpNav button{flex:0 0 auto}
+#cmpList div, #cmpGone div, #cmpMoved div{padding:4px 0; font-size:13px; line-height:1.45}
+#cmpList, #cmpGone, #cmpMoved{font-size:13px; color:var(--fg); padding-top:6px}
+#cmpList b, #cmpGone b, #cmpMoved b{color:var(--dim); font-weight:600}
+.cmpWas{color:var(--bad); text-decoration:line-through}
+.cmpNow{color:var(--ok)}
 #sigPage{font-size:12.5px; color:var(--dim); text-align:center; margin:8px 0}
 #ask{
   position:fixed; inset:0; z-index:70; background:rgba(0,0,0,.9); display:none;
@@ -288,6 +290,7 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
     <button class="sm" id="bSign">✍️ Подпись</button>
     <button class="sm" id="bForm">📋 Формы</button>
     <button class="sm" id="bRdt">🛡 Скрыть данные</button>
+    <button class="sm" id="bCmp">🔍 Сравнить версии</button>
     <button class="sm" id="bReset">↩︎ Сначала</button>
   </div>
 </header>
@@ -309,7 +312,7 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
 <!-- СКРЫТИЕ ДАННЫХ. Предупреждение стоит ПЕРВОЙ строкой и видно ДО обводки: сказанное
      после применения читается как оправдание задним числом (тот же порядок, что у
      дисклеймера подписи). -->
-<div id="rdt">
+<div id="rdt" class="scr">
   <div class="card">
     <h2 id="rdtTtl"></h2>
     <div id="rdtWarn"></div>
@@ -322,17 +325,50 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
     <div id="rdtSay" style="font-size:13px; color:var(--dim); padding-top:8px"></div>
   </div>
 </div>
-<div id="rdtBar" hidden>
+<div id="rdtBar" class="scrBar" hidden>
   <button id="bRdtCancel"></button>
   <button id="bRdtAdd" class="sm"></button>
   <button id="bRdtGo" class="pri"></button>
+</div>
+
+<!-- СРАВНЕНИЕ ВЕРСИЙ. Границу сравнения человек читает ДО нажатия, а не узнаёт из
+     результата: мерка здесь СЛОВА, и про оформление с картинками она не знает ничего.
+     Второй файл выбирается на этом же экране - отдельная «загрузка второй версии» в
+     меню означала бы, что человек выбирает действие, не зная, зачем оно. -->
+<div id="cmp" class="scr">
+  <div class="card">
+    <h2 id="cmpTtl"></h2>
+    <div id="cmpWhat"></div>
+    <div id="cmpPickBox">
+      <button id="bCmpPick" class="sm"></button>
+      <input type="file" id="cmpFile" accept="application/pdf,.pdf" hidden>
+      <div id="cmpWhich" class="foot" style="padding:6px 0 0"></div>
+    </div>
+    <div id="cmpSum" hidden></div>
+    <div id="cmpNav" hidden>
+      <button id="bCmpPrev" class="sm"></button>
+      <span id="cmpPage" style="font-size:12.5px; color:var(--dim)"></span>
+      <button id="bCmpNext" class="sm"></button>
+    </div>
+    <div id="cmpWrap" hidden><canvas id="cmpPageCv"></canvas></div>
+    <div id="cmpLeg" hidden></div>
+    <div id="cmpList"></div>
+    <div id="cmpGone"></div>
+    <div id="cmpMoved"></div>
+    <div id="cmpSay" style="font-size:13px; color:var(--dim); padding-top:8px"></div>
+  </div>
+</div>
+<div id="cmpBar" class="scrBar" hidden>
+  <button id="bCmpCancel"></button>
+  <button id="bCmpMode" class="sm"></button>
+  <button id="bCmpGo" class="pri"></button>
 </div>
 
 <!-- ФОРМЫ. Экран один на три дела: показать найденные поля, заполнить их, а если полей нет -
      СОЗДАТЬ. Три отдельных входа в меню означали бы, что человек выбирает между словами,
      смысла которых пока не знает: «есть ли в моём документе поля» - это ответ, а не
      вопрос к нему. -->
-<div id="frm">
+<div id="frm" class="scr">
   <div class="card">
     <h2 id="frmTtl"></h2>
     <div id="frmNote" class="foot" style="padding:0 0 8px"></div>
@@ -360,7 +396,7 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
     <div id="frmSay" style="font-size:13px; color:var(--dim); padding-top:8px"></div>
   </div>
 </div>
-<div id="frmBar" hidden>
+<div id="frmBar" class="scrBar" hidden>
   <button id="bFrmCancel"></button>
   <button id="bFrmAdd" class="sm"></button>
   <button id="bFrmGo" class="pri"></button>
@@ -368,7 +404,7 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
 
 <!-- ПОДПИСЬ. Дисклеймер стоит ПЕРВОЙ строкой этого экрана и виден ДО того, как человек
      что-то выбрал: показанный после файла, он читается как оправдание задним числом. -->
-<div id="sig">
+<div id="sig" class="scr">
   <div class="card">
     <h2 id="sigTtl"></h2>
     <div id="sigNote"></div>
@@ -393,7 +429,7 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
     <div id="sigSay" style="font-size:13px; color:var(--dim); padding-top:8px"></div>
   </div>
 </div>
-<div id="sigBar" hidden>
+<div id="sigBar" class="scrBar" hidden>
   <button id="bSigCancel"></button>
   <button id="bSigKeep" class="sm"></button>
   <button id="bSigGo" class="pri"></button>
@@ -449,7 +485,8 @@ const T = {
     oldStuck: 'Перезагрузился, а версия всё равно старая. Сам обновиться не могу - закрой '
             + 'студию и открой заново из чата.',
     contract: 'Студия и бот разошлись версиями. Закрой её и открой заново из чата.',
-    sign: '✍️ Подпись',
+    sign: '✍️ Подпись', form: '📋 Формы', rdt: '🛡 Скрыть данные',
+    cmp: '🔍 Сравнить версии',
     signTtl: 'Подпись на странице',
     /* ЮРИДИЧЕСКАЯ ФОРМУЛИРОВКА - ТА ЖЕ, ЧТО У БОТА (`i18n['pdf.sign.note']`), слово в
        слово. Две редакции одного предупреждения разъехались бы на первой правке, и
@@ -525,7 +562,64 @@ const T = {
     signWait: 'Бот пока не ответил - подписи из профиля не приехали.',
     signPlaced: 'Подпись поставлена.',
     signBad: 'Картинка не открылась - нужен PNG или JPEG.',
-    ok: 'OK', cancel: 'Отмена',
+    /* ═══ СРАВНЕНИЕ ВЕРСИЙ ═══
+       ГРАНИЦА - ПЕРВОЙ СТРОКОЙ, ДО ВЫБОРА ФАЙЛА. Мерка здесь СЛОВА, и человек, который
+       ждал сверки печатей, должен узнать об этом ДО ожидания, а не из пустого результата.
+       СВОДКА СОБРАНА ИЗ ЧИСЕЛ ВОРКЕРА: ни одной фразы здесь не придумывает модель. */
+    cmpTtl: 'Сравнить версии',
+    cmpWhat: 'Сравниваю ПО СЛОВАМ, весь текст целиком: сдвинутый абзац правкой не считается. '
+           + 'Оформление (кегль, шрифт, отступы), картинки и печати эта мерка не видит - для '
+           + 'них переключи на сравнение по картинке. Первый файл - старая версия, второй - новая.',
+    cmpPick: '📄 Выбрать вторую версию',
+    cmpNoFile: 'Вторая версия не выбрана.',
+    cmpWhich: (n) => 'Вторая версия: ' + n,
+    cmpReady: (n) => 'Вторая версия принята, страниц: ' + n + '. Нажми «Сравнить».',
+    cmpNeedFile: 'Сначала выбери вторую версию документа.',
+    cmpBadFile: 'Этот файл не открылся как PDF.',
+    cmpNoPdfjs: 'pdf.js не поднялся - показать лист нечем.',
+    cmpCancel: 'Отмена',
+    cmpGo: '🔍 Сравнить',
+    cmpModeWords: 'мерка: слова',
+    cmpModePixels: 'мерка: картинка',
+    cmpModeSay: 'Мерка переключена - нажми «Сравнить» заново.',
+    cmpFail: 'Сравнение не вышло.',
+    cmpPage: (n, all) => 'Страница ' + n + ' из ' + all + ' (вторая версия)',
+    cmpPageNo: (n) => 'стр. ' + n + ':',
+    /* ДВА ЧИСЛА, А НЕ ОДНО: «тронуто» и «из них новых» - это разница между «переписали
+       треть договора» и «поменяли местами два пункта». Одно число соврало бы в обе
+       стороны (закон №22). */
+    cmpSum: (s, r) => {
+      if (!s.places) return 'Различий в словах нет' + (r.source === 'ocr'
+        ? ' (текст прочитан распознаванием).' : '.');
+      let t = 'Различий: ' + s.places + '. Слов тронуто: ' + s.touched;
+      if (s.touched_new !== s.touched) t += ', из них новых: ' + s.touched_new;
+      if (s.deleted) t += '. Удалено слов: ' + s.deleted;
+      if (s.pages && s.pages.length) t += '. Страницы: ' + s.pages.join(', ');
+      if (s.places_moved) t += '. Из них переехало без изменений: ' + s.places_moved;
+      return t + '.';
+    },
+    cmpLegIns: 'новое',
+    cmpLegRep: 'заменено',
+    cmpLegMv: 'переехало',
+    cmpEditsTtl: (n) => 'Правки на листе (' + n + '):',
+    cmpStayed: (p) => '[этот текст есть и в старой версии'
+                    + (p ? ', стр. ' + p : '') + ' - переехал]',
+    cmpGoneTtl: (n) => 'Удалено во второй версии (' + n + ') - на листе этого нет:',
+    cmpGoneWhere: (a, b) => '[стояло между «' + (a || 'началом') + '» и «' + (b || 'концом') + '»]',
+    cmpGoneMoved: (p) => '[не потеряно: найдено во второй версии на стр. ' + p + ']',
+    cmpMovedTtl: (n) => 'Переставлено местами (' + n + ') - содержимое не изменилось:',
+    cmpMovedOne: (x) => x.words + ' сл., стр. ' + x.from_page + ' → стр. ' + x.to_page
+                      + ': «' + x.head + '»',
+    cmpOcrAsk: 'Сравнить через распознавание? Числа будут приблизительными: распознавание '
+             + 'путает похожие буквы, и часть правок может оказаться ошибкой чтения.',
+    cmpPxSum: (r) => 'Сравнение по картинке, порог ' + r.threshold + ' из 255, '
+                   + r.dpi + ' dpi. Страниц изменилось: ' + (r.changed || []).length
+                   + ' из ' + Math.min(r.pages_first, r.pages_second) + '.',
+    cmpPxRow: (p) => 'стр. ' + p.page + ': различных пикселей ' + p.diff + '%'
+                   + (p.changed ? ' - изменилась' : '')
+                   + (p.resized ? ' (размер страницы другой)' : ''),
+    cmpPxOnly: (o) => 'стр. ' + o.page + ': есть только в ' + o.where + ' версии',
+    ok: 'OK', cancel: 'Отмена', yes: 'Да', no: 'Нет',
   },
   en: {
     ttl: 'PDF studio', drop: 'Drop a PDF here, or tap to choose one',
@@ -552,7 +646,8 @@ const T = {
             + 'studio and open it again from the chat.',
     contract: 'The studio and the bot are on different versions. Close it and open it '
             + 'again from the chat.',
-    sign: '✍️ Signature',
+    sign: '✍️ Signature', form: '📋 Forms', rdt: '🛡 Hide data',
+    cmp: '🔍 Compare versions',
     signTtl: 'Signature on the page',
     /* Подставляется при выкладке из i18n - см. ru-половину выше. */
     signNote: '✍️ This is a VISUAL signature - an image drawn over the page, like ink on a printout. It carries no legal force and is not a qualified digital signature: the file is not certified and the signer is not cryptographically verified.',
@@ -614,11 +709,64 @@ const T = {
     signWait: 'The bot has not answered yet - saved signatures did not arrive.',
     signPlaced: 'Signature placed.',
     signBad: 'Could not open the image - PNG or JPEG is needed.',
-    ok: 'OK', cancel: 'Cancel',
+    cmpTtl: 'Compare versions',
+    cmpWhat: 'Compared BY WORDS, across the whole text: a paragraph that merely shifted is '
+           + 'not a change. Formatting (size, font, spacing), images and stamps are invisible '
+           + 'to this measure - switch to the picture measure for those. The first file is '
+           + 'the old version, the second is the new one.',
+    cmpPick: '📄 Choose the second version',
+    cmpNoFile: 'No second version chosen.',
+    cmpWhich: (n) => 'Second version: ' + n,
+    cmpReady: (n) => 'Second version accepted, pages: ' + n + '. Tap "Compare".',
+    cmpNeedFile: 'Choose the second version of the document first.',
+    cmpBadFile: 'This file did not open as a PDF.',
+    cmpNoPdfjs: 'pdf.js did not load - nothing to draw the page with.',
+    cmpCancel: 'Cancel',
+    cmpGo: '🔍 Compare',
+    cmpModeWords: 'measure: words',
+    cmpModePixels: 'measure: picture',
+    cmpModeSay: 'Measure switched - tap "Compare" again.',
+    cmpFail: 'Comparison did not work out.',
+    cmpPage: (n, all) => 'Page ' + n + ' of ' + all + ' (second version)',
+    cmpPageNo: (n) => 'p. ' + n + ':',
+    cmpSum: (s, r) => {
+      if (!s.places) return 'No differences in words' + (r.source === 'ocr'
+        ? ' (text was read by recognition).' : '.');
+      let t = 'Differences: ' + s.places + '. Words touched: ' + s.touched;
+      if (s.touched_new !== s.touched) t += ', new among them: ' + s.touched_new;
+      if (s.deleted) t += '. Words deleted: ' + s.deleted;
+      if (s.pages && s.pages.length) t += '. Pages: ' + s.pages.join(', ');
+      if (s.places_moved) t += '. Moved unchanged: ' + s.places_moved;
+      return t + '.';
+    },
+    cmpLegIns: 'new',
+    cmpLegRep: 'replaced',
+    cmpLegMv: 'moved',
+    cmpEditsTtl: (n) => 'Changes on the page (' + n + '):',
+    cmpStayed: (p) => '[this text is in the old version too'
+                    + (p ? ', p. ' + p : '') + ' - it moved]',
+    cmpGoneTtl: (n) => 'Deleted in the second version (' + n + ') - not on this page:',
+    cmpGoneWhere: (a, b) => '[stood between "' + (a || 'the start') + '" and "'
+                          + (b || 'the end') + '"]',
+    cmpGoneMoved: (p) => '[not lost: found in the second version on p. ' + p + ']',
+    cmpMovedTtl: (n) => 'Reordered (' + n + ') - the content did not change:',
+    cmpMovedOne: (x) => x.words + ' words, p. ' + x.from_page + ' → p. ' + x.to_page
+                      + ': "' + x.head + '"',
+    cmpOcrAsk: 'Compare through recognition? The numbers will be approximate: recognition '
+             + 'confuses similar letters, so some changes may be reading errors.',
+    cmpPxSum: (r) => 'Picture comparison, threshold ' + r.threshold + ' of 255, '
+                   + r.dpi + ' dpi. Pages changed: ' + (r.changed || []).length
+                   + ' of ' + Math.min(r.pages_first, r.pages_second) + '.',
+    cmpPxRow: (p) => 'p. ' + p.page + ': differing pixels ' + p.diff + '%'
+                   + (p.changed ? ' - changed' : '')
+                   + (p.resized ? ' (page size differs)' : ''),
+    cmpPxOnly: (o) => 'p. ' + o.page + ': present only in the '
+                    + (o.where === 'первой' ? 'first' : 'second') + ' version',
+    ok: 'OK', cancel: 'Cancel', yes: 'Yes', no: 'No',
   },
 }[LANG];
 
-const VERSION = 'ba0a169f98ed';
+const VERSION = '4ff0c1bc6087';
 /* АДРЕСА - ПАРАМЕТРОМ ССЫЛКИ СИЛЬНЕЕ ЗАШИТОГО ПРИ ВЫКЛАДКЕ. Причина записана в
    publish_static.page_url и стоила полдня: `https://hara-search.laynenorstrud.workers.dev` подставляется В МОМЕНТ ДЕПЛОЯ, и
    если Worker тогда не был в реестре, страница остаётся без адреса НАВСЕГДА. Ссылку же
@@ -1026,6 +1174,27 @@ function askText(title, dflt) {
   });
 }
 
+/* ВОПРОС «ДА ИЛИ НЕТ» - ТОЙ ЖЕ КАРТОЧКОЙ, ЧТО И ВОПРОС СО СТРОКОЙ. Заводить вторую
+   означало бы две разные карточки с одинаковой работой, а `confirm()` в вебвью Telegram не
+   показывают так же, как и `prompt()`. Поле ввода просто прячется: оно здесь лишнее, а
+   показанное пустым читается как «надо что-то написать». */
+function askYesNo(title) {
+  return new Promise((res) => {
+    $('askTtl').textContent = title;
+    $('askInput').hidden = true;
+    $('askNo').textContent = T.no;
+    $('askYes').textContent = T.yes;
+    $('ask').classList.add('on');
+    const done = (v) => {
+      $('ask').classList.remove('on');
+      $('askInput').hidden = false;
+      res(v);
+    };
+    $('askNo').onclick = () => done(false);
+    $('askYes').onclick = () => done(true);
+  });
+}
+
 /* ── ящик сигналов: положить и дождаться ответа ────────────────────────────────
    ТРИ МОЛЧАНИЯ РАЗЛИЧИМЫ. «Бот не забрал», «забрал и работает дольше окна» и «ответа нет»
    лечатся по-разному, и одна фраза на все три отправляла бы чинить не то (урок комнаты). */
@@ -1420,6 +1589,296 @@ async function rdtGo() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
+   СРАВНЕНИЕ ВЕРСИЙ: ЛИСТ ВТОРОЙ ВЕРСИИ С ПОДСВЕТКОЙ, УДАЛЁННОЕ - СПИСКОМ
+   ═══════════════════════════════════════════════════════════════════════════════
+   ЛИСТ РИСУЕТСЯ ИЗ ФАЙЛА В БРАУЗЕРЕ, А НЕ КАЧАЕТСЯ С СЕРВЕРА: вторую версию человек
+   ТОЛЬКО ЧТО выбрал у себя, она уже в памяти вкладки. Скачивать её обратно значило бы
+   гонять мегабайты по кругу ради картинки, которую можно нарисовать сразу.
+   СВОДКА СОБИРАЕТСЯ ИЗ ЧИСЕЛ ВОРКЕРА, А НЕ ПЕРЕСКАЗЫВАЕТСЯ МОДЕЛЬЮ: пересказ правок в
+   договоре - это ровно то место, где выдумка стоит дороже всего, а числа и фрагменты
+   человек сверит сам. Модели здесь нет вообще. */
+let CMP = { file: null, doc: null, res: null, page: 0, mode: 'words', sent: false };
+
+const cmpSay = (t, cls) => {
+  const e = $('cmpSay');
+  e.textContent = t || '';
+  e.style.color = cls === 'bad' ? 'var(--bad)' : 'var(--dim)';
+};
+
+function cmpClose() {
+  $('cmp').classList.remove('on');
+  $('cmpBar').hidden = true;
+}
+
+async function cmpOpen() {
+  if (!DOC) return;
+  const off = whyOff();
+  if (off) { say(off, 'bad'); return; }
+  CMP = { file: null, doc: null, res: null, page: 0, mode: 'words', sent: false };
+  $('cmpTtl').textContent = T.cmpTtl;
+  $('cmpWhat').textContent = T.cmpWhat;
+  $('bCmpPick').textContent = T.cmpPick;
+  $('bCmpCancel').textContent = T.cmpCancel;
+  $('bCmpGo').textContent = T.cmpGo;
+  $('bCmpPrev').textContent = '‹';
+  $('bCmpNext').textContent = '›';
+  $('cmpWhich').textContent = T.cmpNoFile;
+  for (const id of ['cmpSum', 'cmpNav', 'cmpWrap', 'cmpLeg']) $(id).hidden = true;
+  for (const id of ['cmpList', 'cmpGone', 'cmpMoved']) $(id).innerHTML = '';
+  cmpMode(false);
+  $('cmp').classList.add('on');
+  $('cmpBar').hidden = false;
+  cmpSay('');
+}
+
+/* ПЕРЕКЛЮЧАТЕЛЬ НАЗЫВАЕТ ТЕКУЩИЙ РЕЖИМ, А НЕ ТОТ, В КОТОРЫЙ ПЕРЕЙДЁТ: подпись «по
+   пикселям» на кнопке в режиме слов читается и так, и так, а ошибка здесь означает, что
+   человек получил не ту мерку и не понял этого. Обратный путь у переключателя проверен
+   (закон №55): второе нажатие возвращает слова. */
+function cmpMode(flip) {
+  if (flip) CMP.mode = (CMP.mode === 'words') ? 'pixels' : 'words';
+  $('bCmpMode').textContent = (CMP.mode === 'words') ? T.cmpModeWords : T.cmpModePixels;
+  if (flip) {
+    CMP.res = null;
+    for (const id of ['cmpSum', 'cmpNav', 'cmpWrap', 'cmpLeg']) $(id).hidden = true;
+    for (const id of ['cmpList', 'cmpGone', 'cmpMoved']) $(id).innerHTML = '';
+    cmpSay(T.cmpModeSay);
+  }
+}
+
+async function cmpPick(f) {
+  if (!f) return;
+  CMP.file = f;
+  CMP.res = null;
+  CMP.sent = false;
+  $('cmpWhich').textContent = T.cmpWhich(f.name || '?');
+  cmpSay(T.working);
+  try {
+    const buf = await f.arrayBuffer();
+    /* ЛИСТ ВТОРОЙ ВЕРСИИ ГОТОВИМ СРАЗУ: если файл не открывается, человек узнает это
+       ЗДЕСЬ, а не после ожидания сравнения на сервере. */
+    if (!pdfjs) { cmpSay(T.cmpNoPdfjs, 'bad'); return; }
+    CMP.doc = await pdfjs.getDocument({ data: new Uint8Array(buf.slice(0)) }).promise;
+    const r = await fetch(u('/pdf/second'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/pdf', 'X-Pdf-Name': encodeURIComponent(f.name || 'cmp.pdf') },
+      body: buf,
+    });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || !j || !j.ok) {
+      CMP.file = null; CMP.doc = null;
+      cmpSay((j && (j.human || j.error)) || ('HTTP ' + r.status), 'bad');
+      $('cmpWhich').textContent = T.cmpNoFile;
+      return;
+    }
+    CMP.sent = true;
+    cmpSay(T.cmpReady(j.pages || CMP.doc.numPages));
+  } catch (e) {
+    CMP.file = null; CMP.doc = null;
+    $('cmpWhich').textContent = T.cmpNoFile;
+    cmpSay(T.cmpBadFile + ' ' + String(e && e.message || e), 'bad');
+  }
+}
+
+async function cmpGo() {
+  const off = whyOff();
+  if (off) { cmpSay(off, 'bad'); return; }
+  if (!CMP.sent) { cmpSay(T.cmpNeedFile, 'bad'); return; }
+  cmpSay(T.working);
+  const ok = await apply({ op: 'compare', mode: CMP.mode });
+  if (!ok) {
+    const why = $('say').textContent || '';
+    /* ОТКАЗ «НЕТ ТЕКСТОВОГО СЛОЯ» - ЭТО ПРЕДЛОЖЕНИЕ, А НЕ ТУПИК: распознавание у нас
+       есть, и спросить человека надо здесь, назвав цену (числа станут приблизительными).
+       Решает он, а не мы: молча пустить скан через tesseract значило бы выдать
+       приблизительные числа за точные (закон №32 - гейт у действия). */
+    if (/текстов/i.test(why) || /text layer/i.test(why)) {
+      cmpSay(why, 'bad');
+      const yes = await askYesNo(T.cmpOcrAsk);
+      if (!yes) return;
+      cmpSay(T.working);
+      if (!(await apply({ op: 'compare', mode: CMP.mode, ocr: '1' }))) {
+        cmpSay($('say').textContent || T.cmpFail, 'bad');
+        return;
+      }
+    } else {
+      cmpSay(why || T.cmpFail, 'bad');
+      return;
+    }
+  }
+  CMP.res = LAST_RES || null;
+  if (!CMP.res) { cmpSay(T.cmpFail, 'bad'); return; }
+  CMP.page = 0;
+  await cmpPaint();
+}
+
+async function cmpPaint() {
+  const r = CMP.res;
+  if (!r) return;
+  if (r.mode === 'pixels') return cmpPaintPixels(r);
+  const s = r.summary || {};
+  $('cmpSum').hidden = false;
+  $('cmpSum').className = (s.places ? '' : 'plain');
+  $('cmpSum').textContent = T.cmpSum(s, r);
+  /* ПЕРВОЙ ПОКАЗЫВАЕМ СТРАНИЦУ С ПРАВКОЙ, А НЕ ПЕРВУЮ СТРАНИЦУ ДОКУМЕНТА: человек открыл
+     сравнение, чтобы увидеть различия, и титульный лист без подсветки читается как
+     «ничего не нашлось». */
+  CMP.page = (s.pages && s.pages.length) ? (s.pages[0] - 1) : 0;
+  $('cmpLeg').hidden = false;
+  $('cmpLeg').innerHTML = '';
+  for (const [cls, txt] of [['ins', T.cmpLegIns], ['rep', T.cmpLegRep], ['mv', T.cmpLegMv]]) {
+    const d = document.createElement('span');
+    const i = document.createElement('i');
+    i.className = 'cmpHit ' + cls;
+    i.style.position = 'static';
+    d.appendChild(i);
+    d.appendChild(document.createTextNode(txt));
+    $('cmpLeg').appendChild(d);
+  }
+  cmpPaintLists(r);
+  await cmpPaintPage();
+}
+
+async function cmpPaintPage() {
+  const r = CMP.res;
+  if (!r || !CMP.doc) return;
+  const total = CMP.doc.numPages;
+  CMP.page = Math.max(0, Math.min(CMP.page, total - 1));
+  const cv = $('cmpPageCv');
+  const page = await CMP.doc.getPage(CMP.page + 1);
+  /* ПОВОРОТ БЕРЁТСЯ ИЗ САМОГО ФАЙЛА, А НЕ ИЗ СЕТКИ: сетка про ПЕРВЫЙ документ, а рисуем
+     мы ВТОРОЙ, и его страницы человек не крутил. Доли от воркера считаны от видимого
+     кадра (pdfplumber отдаёт их уже с учётом `/Rotate`), значит и кадр здесь - видимый. */
+  const v0 = page.getViewport({ scale: 1, rotation: page.rotate % 360 });
+  const wide = Math.min(520, (window.innerWidth || 360) - 56);
+  const v = page.getViewport({ scale: wide / v0.width, rotation: page.rotate % 360 });
+  cv.width = Math.ceil(v.width); cv.height = Math.ceil(v.height);
+  cv.style.width = Math.ceil(v.width) + 'px';
+  $('cmpWrap').hidden = false;
+  $('cmpNav').hidden = false;
+  await page.render({ canvasContext: cv.getContext('2d'), viewport: v }).promise;
+  $('cmpPage').textContent = T.cmpPage(CMP.page + 1, total);
+  const wrap = $('cmpWrap');
+  for (const el of [...wrap.querySelectorAll('.cmpHit')]) el.remove();
+  const W = cv.clientWidth || cv.width, H = cv.clientHeight || cv.height;
+  for (const e of (r.edits || [])) {
+    for (const b of (e.boxes || [])) {
+      if (b.p !== CMP.page + 1) continue;
+      const d = document.createElement('div');
+      d.className = 'cmpHit ' + (e.stayed ? 'mv' : (e.kind === 'insert' ? 'ins' : 'rep'));
+      d.style.left = (b.nx * W) + 'px';
+      d.style.top = (b.ny * H) + 'px';
+      d.style.width = Math.max(2, b.nw * W) + 'px';
+      d.style.height = Math.max(2, b.nh * H) + 'px';
+      wrap.appendChild(d);
+    }
+  }
+}
+
+function cmpPaintLists(r) {
+  const box = $('cmpList');
+  box.innerHTML = '';
+  const head = (el, t) => {
+    const h = document.createElement('div');
+    h.innerHTML = '<b></b>';
+    h.querySelector('b').textContent = t;
+    el.appendChild(h);
+  };
+  if ((r.edits || []).length) {
+    head(box, T.cmpEditsTtl((r.edits || []).length));
+    for (const e of r.edits) {
+      const d = document.createElement('div');
+      d.textContent = T.cmpPageNo(e.page) + ' ';
+      if (e.kind === 'replace' && e.was) {
+        const a = document.createElement('span');
+        a.className = 'cmpWas'; a.textContent = e.was;
+        d.appendChild(a);
+        d.appendChild(document.createTextNode(' → '));
+      }
+      const b = document.createElement('span');
+      b.className = 'cmpNow'; b.textContent = e.now;
+      d.appendChild(b);
+      if (e.stayed) d.appendChild(document.createTextNode(' ' + T.cmpStayed(e.from_page)));
+      /* ПО ПРАВКЕ МОЖНО ПЕРЕЙТИ НА ЕЁ СТРАНИЦУ: список и лист - одно и то же, и искать
+         страницу руками после того, как мы её УЖЕ знаем, человеку незачем. */
+      d.style.cursor = 'pointer';
+      d.onclick = () => { CMP.page = (e.page || 1) - 1; cmpPaintPage(); };
+      box.appendChild(d);
+    }
+  }
+  if (r.human_cut) {
+    const d = document.createElement('div');
+    d.style.color = 'var(--warn)';
+    d.textContent = r.human_cut;
+    box.appendChild(d);
+  }
+  const gone = $('cmpGone');
+  gone.innerHTML = '';
+  if ((r.deleted || []).length) {
+    head(gone, T.cmpGoneTtl(r.deleted.length));
+    for (const x of r.deleted) {
+      const d = document.createElement('div');
+      const a = document.createElement('span');
+      a.className = 'cmpWas'; a.textContent = x.was;
+      d.appendChild(document.createTextNode(T.cmpPageNo(x.page) + ' '));
+      d.appendChild(a);
+      d.appendChild(document.createTextNode(
+        ' ' + (x.moved_to ? T.cmpGoneMoved(x.moved_to) : T.cmpGoneWhere(x.after, x.before))));
+      gone.appendChild(d);
+    }
+  }
+  const mv = $('cmpMoved');
+  mv.innerHTML = '';
+  if ((r.moved || []).length) {
+    head(mv, T.cmpMovedTtl(r.moved.length));
+    for (const x of r.moved) {
+      const d = document.createElement('div');
+      d.textContent = T.cmpMovedOne(x);
+      mv.appendChild(d);
+    }
+  }
+  if (r.note) {
+    const d = document.createElement('div');
+    d.style.color = 'var(--warn)';
+    d.textContent = r.note;
+    mv.appendChild(d);
+  }
+}
+
+/* ПИКСЕЛЬНЫЙ РЕЖИМ ОТВЕЧАЕТ ЧИСЛАМИ ПО СТРАНИЦАМ И НАЗЫВАЕТ СВОЮ СЛАБОСТЬ ТУТ ЖЕ:
+   перевёрстку он видит как сплошное различие, и не скажи мы этого - человек прочитал бы
+   «изменились все страницы» про документ, где поправлено одно слово. */
+function cmpPaintPixels(r) {
+  $('cmpSum').hidden = false;
+  $('cmpSum').className = '';
+  $('cmpSum').textContent = T.cmpPxSum(r);
+  $('cmpLeg').hidden = true;
+  $('cmpWrap').hidden = true;
+  $('cmpNav').hidden = true;
+  const box = $('cmpList');
+  box.innerHTML = '';
+  for (const p of (r.pages || [])) {
+    const d = document.createElement('div');
+    d.textContent = T.cmpPxRow(p);
+    if (p.changed) d.style.color = 'var(--warn)';
+    box.appendChild(d);
+  }
+  for (const o of (r.only_in_one || [])) {
+    const d = document.createElement('div');
+    d.style.color = 'var(--warn)';
+    d.textContent = T.cmpPxOnly(o);
+    box.appendChild(d);
+  }
+  $('cmpGone').innerHTML = '';
+  const mv = $('cmpMoved');
+  mv.innerHTML = '';
+  const d = document.createElement('div');
+  d.style.color = 'var(--dim)';
+  d.textContent = r.note || '';
+  mv.appendChild(d);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
    ФОРМЫ: ПОКАЗАТЬ ПОЛЯ, ЗАПОЛНИТЬ ИХ, А ЕСЛИ ИХ НЕТ - СОЗДАТЬ
    ═══════════════════════════════════════════════════════════════════════════════ */
 let FRM = { fields: [], xfa: 'no', make: [], page: 0 };
@@ -1777,6 +2236,13 @@ function texts() {
   $('bKeep').textContent = T.keep; $('bDel').textContent = T.del;
   $('bZip').textContent = T.zip; $('bReset').textContent = T.reset;
   $('bSign').textContent = T.sign;
+  /* КНОПКИ ТУЛБАРА ПЕРЕВОДЯТСЯ ВСЕ, И ЭТО НЕ УКРАШЕНИЕ. `bForm` и `bRdt` ключей НЕ
+     ИМЕЛИ - их подписи приехали из разметки, то есть в английской студии на тулбаре
+     висел русский текст (закон №20, мой же недосмотр этапов 3 и 4). Сторож pdf36
+     сверяет РАЗМЕТКУ со этим списком: появилась кнопка с текстом - будет и ключ. */
+  $('bForm').textContent = T.form;
+  $('bRdt').textContent = T.rdt;
+  $('bCmp').textContent = T.cmp;
   $('bSave').textContent = T.save; $('bChat').textContent = T.chat;
   $('foot').textContent = T.foot;
   document.title = T.ttl;
@@ -1836,6 +2302,14 @@ function texts() {
   $('bFrmCancel').onclick = frmClose;
   $('bFrmAdd').onclick = frmAddMode;
   $('bFrmGo').onclick = frmGo;
+  $('bCmp').onclick = cmpOpen;
+  $('bCmpCancel').onclick = cmpClose;
+  $('bCmpPick').onclick = () => $('cmpFile').click();
+  $('cmpFile').onchange = (e) => { const f = e.target.files[0]; if (f) cmpPick(f); };
+  $('bCmpMode').onclick = () => cmpMode(true);
+  $('bCmpGo').onclick = cmpGo;
+  $('bCmpPrev').onclick = () => { CMP.page -= 1; cmpPaintPage(); };
+  $('bCmpNext').onclick = () => { CMP.page += 1; cmpPaintPage(); };
   $('bSigCancel').onclick = sigClose;
   $('bSigGo').onclick = sigNext;
   $('bSigKeep').onclick = sigKeep;
