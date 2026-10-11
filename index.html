@@ -39,6 +39,16 @@
   }
 }
 *{box-sizing:border-box}
+/* ═══ hidden ОБЯЗАН СКРЫВАТЬ, И ЭТО НЕ ОЧЕВИДНОСТЬ ═══
+   ЗАМЕР БРАУЗЕРОМ 11.10: `#tools`, `#bar`, `#sigBar` и `#frmBar` стояли с атрибутом
+   `hidden`, а вычисленный `display` у них был `flex` - потому что правило по ID сильнее
+   браузерного `[hidden]{display:none}`. Цена: ряд операций и кнопки «Скачать»/«В чат»
+   видны и НАЖИМАЕМЫ до загрузки документа, а панель подписи после закрытия экрана
+   остаётся прозрачной мёртвой зоной поверх нижних кнопок. Кнопка, обещающая работу,
+   которой не случится, хуже отсутствующей (закон №36).
+   ПРАВИЛО ОДНО НА ВСЮ СТРАНИЦУ: без него каждая новая панель повторяет ту же ошибку, и
+   заметит её не автор, а человек. Сторож - pdf30. */
+[hidden]{display:none !important}
 html,body{margin:0;padding:0}
 body{
   background:var(--bg); color:var(--ink); font:15px/1.45 -apple-system,BlinkMacSystemFont,
@@ -159,6 +169,53 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
   position:absolute; right:-11px; bottom:-11px; width:26px; height:26px; border-radius:50%;
   background:var(--accent); border:2px solid #fff; touch-action:none; cursor:nwse-resize;
 }
+/* ═══ ЭКРАН ФОРМ ═══
+   УСТРОЕН КАК ЭКРАН ПОДПИСИ, И ЭТО НЕ ЛЕНЬ: человек уже знает, что полноэкранная карточка
+   поверх сетки - это «отдельное дело с этим документом», и второй язык интерфейса в одной
+   аппке пришлось бы учить заново. */
+#frm{
+  position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.92); display:none;
+  overflow:auto; padding:12px calc(12px + env(safe-area-inset-left)) 96px;
+}
+#frm.on{display:block}
+#frm .card{
+  max-width:560px; margin:0 auto; background:var(--card); border:1px solid var(--line);
+  border-radius:14px; padding:12px;
+}
+#frm h2{font-size:16px; margin:0 0 8px}
+/* ПОЛЕ - СТРОКА С ПОДПИСЬЮ СВЕРХУ: имя поля в анкете бывает длинным («Фамилия, имя и
+   отчество полностью»), и в одну строку с вводом оно не влезает ни на одном телефоне. */
+.fld{margin:0 0 10px}
+.fld .lbl{font-size:12px; color:var(--dim); margin-bottom:3px; word-break:break-word}
+.fld .lbl b{color:var(--ink); font-weight:600}
+.fld input[type=text],.fld select{
+  width:100%; padding:8px 10px; font-size:15px; color:var(--ink); background:var(--bg);
+  border:1px solid var(--line); border-radius:9px; outline:none;
+}
+.fld input[type=text]:focus,.fld select:focus{border-color:var(--accent-line)}
+.fld .chk{display:flex; align-items:center; gap:8px; font-size:15px}
+.fld .chk input{width:20px; height:20px}
+/* ПОЛЕ ТОЛЬКО ДЛЯ ЧТЕНИЯ ГАСИМ, А НЕ ПРЯЧЕМ: спрятанное читается как «такого поля нет», и
+   человек ищет его глазами в документе (закон №36). */
+.fld.ro input,.fld.ro select{opacity:.55}
+.fld .ro-why{font-size:11px; color:var(--warn)}
+#frmMake{margin-top:4px}
+#frmWrap{position:relative; display:inline-block; max-width:100%}
+#frmWrap canvas{max-width:100%; height:auto; display:block; border-radius:8px}
+#frmBox{
+  position:absolute; border:2px dashed var(--accent-line); background:rgba(124,58,237,.12);
+  touch-action:none; cursor:move;
+}
+#frmGrip{
+  position:absolute; right:-9px; bottom:-9px; width:20px; height:20px; border-radius:50%;
+  background:var(--accent); border:2px solid #fff; touch-action:none; cursor:nwse-resize;
+}
+#frmBar{
+  position:fixed; left:0; right:0; bottom:0; z-index:61; display:flex; gap:8px;
+  padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:var(--card);
+  border-top:1px solid var(--line);
+}
+#frmBar button{flex:1}
 #sigBar{
   position:fixed; left:0; right:0; bottom:0; z-index:61; background:var(--card);
   border-top:1px solid var(--line); padding:9px 12px calc(9px + env(safe-area-inset-bottom));
@@ -190,6 +247,7 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
     <button class="sm" id="bDel">Удалить выделенные</button>
     <button class="sm" id="bZip">🗜 Сжать</button>
     <button class="sm" id="bSign">✍️ Подпись</button>
+    <button class="sm" id="bForm">📋 Формы</button>
     <button class="sm" id="bReset">↩︎ Сначала</button>
   </div>
 </header>
@@ -207,6 +265,44 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
 </div>
 
 <div id="zoom"><button class="close sm" id="bZclose">✕</button><div id="zbox"></div></div>
+
+<!-- ФОРМЫ. Экран один на три дела: показать найденные поля, заполнить их, а если полей нет -
+     СОЗДАТЬ. Три отдельных входа в меню означали бы, что человек выбирает между словами,
+     смысла которых пока не знает: «есть ли в моём документе поля» - это ответ, а не
+     вопрос к нему. -->
+<div id="frm">
+  <div class="card">
+    <h2 id="frmTtl"></h2>
+    <div id="frmNote" class="foot" style="padding:0 0 8px"></div>
+    <div id="frmList"></div>
+    <div id="frmMake" hidden>
+      <div id="frmPage" class="foot" style="padding:0 0 6px"></div>
+      <div id="frmWrap">
+        <canvas id="frmPageCv"></canvas>
+        <div id="frmBox"><div id="frmGrip"></div></div>
+      </div>
+      <div class="fld" style="margin-top:10px">
+        <div class="lbl" id="frmNmLbl"></div>
+        <input type="text" id="frmNm" autocomplete="off" maxlength="60">
+      </div>
+      <div class="fld">
+        <div class="lbl" id="frmKindLbl"></div>
+        <select id="frmKind"></select>
+      </div>
+      <div class="fld" id="frmOptsBox" hidden>
+        <div class="lbl" id="frmOptsLbl"></div>
+        <input type="text" id="frmOpts" autocomplete="off" maxlength="200">
+      </div>
+      <div id="frmMade" class="foot" style="padding:4px 0 0"></div>
+    </div>
+    <div id="frmSay" style="font-size:13px; color:var(--dim); padding-top:8px"></div>
+  </div>
+</div>
+<div id="frmBar" hidden>
+  <button id="bFrmCancel"></button>
+  <button id="bFrmAdd" class="sm"></button>
+  <button id="bFrmGo" class="pri"></button>
+</div>
 
 <!-- ПОДПИСЬ. Дисклеймер стоит ПЕРВОЙ строкой этого экрана и виден ДО того, как человек
      что-то выбрал: показанный после файла, он читается как оправдание задним числом. -->
@@ -300,6 +396,38 @@ const T = {
        больше НЕТ: формулировка юридически значимая, и читать разное в чате и в студии
        человек не должен. Метка на месте - значит страницу открыли файлом, а не выкладкой. */
     signNote: '✍️ Это ВИЗУАЛЬНАЯ подпись - картинка поверх страницы, как от руки на распечатке. Юридической силы она не имеет и квалифицированной ЭЦП не является: файл не заверен и подписант криптографически не подтверждён.',
+    /* ═══ ФОРМЫ ═══
+       ГРАНИЦА НАЗВАНА ЧЕЛОВЕКУ ЕГО СЛОВАМИ, А НЕ НАШИМИ. «XFA» ему ничего не говорит,
+       поэтому отказ объясняет, ЧТО это значит и ЧЕМ открыть; «полей не найдено» на такой
+       форме было бы ложью, из-за которой он искал бы ошибку у себя. */
+    frmTtl: 'Поля формы',
+    frmLoading: 'Смотрю, какие в документе поля…',
+    frmNone: 'Заполняемых полей в документе нет. Их можно СОЗДАТЬ: нажми «+ поле», обведи '
+           + 'место на странице и назови его.',
+    frmFound: (n) => 'Нашёл полей: ' + n + '. Заполни нужные и нажми «Применить».',
+    frmHybrid: 'Это гибридная форма (XFA + AcroForm). Мы правим слой AcroForm; Adobe '
+             + 'Acrobat может показать свой - проверь результат в нём, если отправляешь в '
+             + 'учреждение.',
+    frmRo: 'только для чтения',
+    frmReq: 'обязательное',
+    frmApply: '✅ Применить',
+    frmAdd: '+ поле',
+    frmCancel: 'Отмена',
+    frmNmLbl: 'Как назвать поле (латиницей, без пробелов):',
+    frmKindLbl: 'Что это за поле:',
+    frmOptsLbl: 'Варианты списка через запятую:',
+    frmKinds: { text: 'Строка текста', check: 'Флажок', choice: 'Список' },
+    frmPage: (n, all) => 'Страница ' + n + ' из ' + all + ' - перетащи рамку, угол меняет размер',
+    frmNeedName: 'Назови поле - без имени его не заполнить.',
+    frmBadName: 'Имя поля - латиница, цифры и подчёркивание, без пробелов.',
+    frmNeedOpts: 'У списка нужно минимум два варианта через запятую.',
+    frmMade: (n) => 'Добавлено полей: ' + n + '. Можно добавить ещё или нажать «Применить».',
+    frmNothing: 'Ничего не изменено - заполни хотя бы одно поле.',
+    frmDone: (n) => 'Готово, заполнено полей: ' + n + '.',
+    frmMadeDone: (n) => 'Готово, создано полей: ' + n + '. Теперь их можно заполнить.',
+    frmCyr: 'В значениях есть не латиница - читалке велено перерисовать поля своим '
+          + 'шрифтом. Если в каком-то просмотрщике поле выглядит пустым, открой файл в '
+          + 'Acrobat Reader.',
     signSaved: 'Сохранённые подписи (тап - выбрать):',
     signNoSaved: 'Сохранённых подписей пока нет.',
     signDraw: 'Или нарисуй пальцем:',
@@ -347,6 +475,33 @@ const T = {
     signTtl: 'Signature on the page',
     /* Подставляется при выкладке из i18n - см. ru-половину выше. */
     signNote: '✍️ This is a VISUAL signature - an image drawn over the page, like ink on a printout. It carries no legal force and is not a qualified digital signature: the file is not certified and the signer is not cryptographically verified.',
+    frmTtl: 'Form fields',
+    frmLoading: 'Checking what fields the document has…',
+    frmNone: 'This document has no fillable fields. You can CREATE them: tap "+ field", '
+           + 'draw a box on the page and give it a name.',
+    frmFound: (n) => 'Found ' + n + ' field(s). Fill in what you need and tap "Apply".',
+    frmHybrid: 'This is a hybrid form (XFA + AcroForm). We edit the AcroForm layer; Adobe '
+             + 'Acrobat may show its own - check the result there if you are sending it to '
+             + 'an institution.',
+    frmRo: 'read-only',
+    frmReq: 'required',
+    frmApply: '✅ Apply',
+    frmAdd: '+ field',
+    frmCancel: 'Cancel',
+    frmNmLbl: 'Field name (latin letters, no spaces):',
+    frmKindLbl: 'What kind of field:',
+    frmOptsLbl: 'List options, comma-separated:',
+    frmKinds: { text: 'Text line', check: 'Checkbox', choice: 'Dropdown' },
+    frmPage: (n, all) => 'Page ' + n + ' of ' + all + ' - drag the box, the corner resizes it',
+    frmNeedName: 'Give the field a name - without one it cannot be filled.',
+    frmBadName: 'Field name: latin letters, digits and underscore, no spaces.',
+    frmNeedOpts: 'A dropdown needs at least two comma-separated options.',
+    frmMade: (n) => 'Added ' + n + ' field(s). Add more or tap "Apply".',
+    frmNothing: 'Nothing changed - fill in at least one field.',
+    frmDone: (n) => 'Done, filled ' + n + ' field(s).',
+    frmMadeDone: (n) => 'Done, created ' + n + ' field(s). You can fill them in now.',
+    frmCyr: 'Some values are not latin - the reader was told to redraw the fields with its '
+          + 'own font. If a field looks empty in some viewer, open the file in Acrobat Reader.',
     signSaved: 'Saved signatures (tap to pick):',
     signNoSaved: 'No saved signatures yet.',
     signDraw: 'Or draw one with your finger:',
@@ -367,7 +522,7 @@ const T = {
   },
 }[LANG];
 
-const VERSION = '3f6c7e2639cb';
+const VERSION = '019a11da850f';
 /* АДРЕСА - ПАРАМЕТРОМ ССЫЛКИ СИЛЬНЕЕ ЗАШИТОГО ПРИ ВЫКЛАДКЕ. Причина записана в
    publish_static.page_url и стоила полдня: `https://hara-search.laynenorstrud.workers.dev` подставляется В МОМЕНТ ДЕПЛОЯ, и
    если Worker тогда не был в реестре, страница остаётся без адреса НАВСЕГДА. Ссылку же
@@ -1002,6 +1157,276 @@ async function sigApply() {
   say(T.signPlaced, 'ok');
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ФОРМЫ: ПОКАЗАТЬ ПОЛЯ, ЗАПОЛНИТЬ ИХ, А ЕСЛИ ИХ НЕТ - СОЗДАТЬ
+   ═══════════════════════════════════════════════════════════════════════════════ */
+let FRM = { fields: [], xfa: 'no', make: [], page: 0 };
+
+const frmSay = (t, cls) => {
+  const e = $('frmSay');
+  e.textContent = t || '';
+  e.style.color = cls === 'bad' ? 'var(--bad)' : 'var(--dim)';
+};
+
+function frmClose() {
+  $('frm').classList.remove('on');
+  $('frmBar').hidden = true;
+}
+
+async function frmOpen() {
+  if (!DOC) return;
+  const off = whyOff();
+  if (off) { say(off, 'bad'); return; }
+  FRM = { fields: [], xfa: 'no', make: [], page: 0 };
+  $('frmTtl').textContent = T.frmTtl;
+  $('bFrmCancel').textContent = T.frmCancel;
+  $('bFrmAdd').textContent = T.frmAdd;
+  $('bFrmGo').textContent = T.frmApply;
+  $('frmNmLbl').textContent = T.frmNmLbl;
+  $('frmKindLbl').textContent = T.frmKindLbl;
+  $('frmOptsLbl').textContent = T.frmOptsLbl;
+  const kd = $('frmKind');
+  kd.innerHTML = '';
+  for (const k of ['text', 'check', 'choice']) {
+    const o = document.createElement('option');
+    o.value = k; o.textContent = T.frmKinds[k];
+    kd.appendChild(o);
+  }
+  kd.onchange = () => { $('frmOptsBox').hidden = kd.value !== 'choice'; };
+  $('frmOptsBox').hidden = true;
+  $('frmMake').hidden = true;
+  $('frmList').innerHTML = '';
+  $('frmMade').textContent = '';
+  $('frm').classList.add('on');
+  $('frmBar').hidden = false;
+  frmSay(T.frmLoading);
+  /* ═══ СПРАШИВАЕМ ВОРКЕР, А НЕ pdf.js ═══
+     У pdf.js есть свой разбор аннотаций, и соблазн прочитать поля ЗДЕСЬ большой. Нельзя:
+     заполнять их будет ВОРКЕР, и его представление о том, как зовётся поле и что в нём
+     допустимо, - единственное, которое имеет значение. Прочитай мы своим разбором -
+     человек увидел бы поля, которых воркер не знает, и отказ «нет такого поля» на
+     собственном же списке (закон №40). */
+  const r = await fetch(u('/pdf/op'), {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ op: 'form_read' }),
+  });
+  const j = await r.json().catch(() => null);
+  if (!r.ok || !j || !j.ok) {
+    /* ОТКАЗ ВОРКЕРА ПОКАЗЫВАЕМ ЕГО СЛОВАМИ: именно здесь приезжает объяснение про XFA, и
+       переписать его своими словами значило бы потерять «чем открыть». */
+    frmSay((j && (j.human || j.error)) || ('HTTP ' + r.status), 'bad');
+    return;
+  }
+  const res = j.res || {};
+  FRM.fields = res.fields || [];
+  FRM.xfa = res.xfa || 'no';
+  frmPaintList();
+}
+
+function frmPaintList() {
+  const box = $('frmList');
+  box.innerHTML = '';
+  if (!FRM.fields.length) {
+    frmSay(FRM.make.length ? T.frmMade(FRM.make.length) : T.frmNone);
+  } else {
+    frmSay(FRM.xfa === 'hybrid' ? T.frmHybrid : T.frmFound(FRM.fields.length));
+  }
+  for (const f of FRM.fields) {
+    const d = document.createElement('div');
+    d.className = 'fld' + (f.readonly ? ' ro' : '');
+    const lbl = document.createElement('div');
+    lbl.className = 'lbl';
+    const b = document.createElement('b');
+    b.textContent = f.name;
+    lbl.appendChild(b);
+    const tags = [];
+    if (f.required) tags.push(T.frmReq);
+    if (f.readonly) tags.push(T.frmRo);
+    if (tags.length) lbl.appendChild(document.createTextNode(' · ' + tags.join(' · ')));
+    d.appendChild(lbl);
+    /* ВИД ВВОДА - ПО ВИДУ ПОЛЯ, И ЗНАЧЕНИЯ БЕРУТСЯ ИЗ ЕГО НАБОРА, А НЕ ПРИДУМЫВАЮТСЯ.
+       Свободный ввод у флажка означал бы «/Maybe» в документе: воркер такое отвергнет, и
+       человек получит отказ за то, что мы дали ему печатать. */
+    if (f.kind === 'button' && f.states && f.states.length) {
+      const on = f.states.map((s) => String(s[0])).find((v) => v !== '/Off');
+      const w = document.createElement('label');
+      w.className = 'chk';
+      const i = document.createElement('input');
+      i.type = 'checkbox';
+      i.dataset.name = f.name;
+      i.dataset.on = on || '/Yes';
+      i.checked = String(f.value || '') === String(on);
+      i.disabled = !!f.readonly;
+      w.appendChild(i);
+      w.appendChild(document.createTextNode(' ' + (on || '/Yes')));
+      d.appendChild(w);
+    } else if (f.kind === 'choice' && f.states && f.states.length) {
+      const sel = document.createElement('select');
+      sel.dataset.name = f.name;
+      sel.disabled = !!f.readonly;
+      for (const pair of f.states) {
+        const o = document.createElement('option');
+        o.value = String(pair[0]);
+        o.textContent = String(pair[1] || pair[0]);
+        if (String(f.value || '') === o.value) o.selected = true;
+        sel.appendChild(o);
+      }
+      d.appendChild(sel);
+    } else {
+      const i = document.createElement('input');
+      i.type = 'text';
+      i.dataset.name = f.name;
+      i.value = f.value == null ? '' : String(f.value);
+      i.disabled = !!f.readonly;
+      d.appendChild(i);
+    }
+    box.appendChild(d);
+  }
+}
+
+/* ── СОЗДАНИЕ ПОЛЯ: ОБВЕСТИ МЕСТО НА СТРАНИЦЕ ───────────────────────────────────── */
+async function frmAddMode() {
+  if (!DOC) return;
+  $('frmMake').hidden = false;
+  const sel = PAGES.map((p, i) => p.sel ? i : -1).filter((i) => i >= 0);
+  FRM.page = sel.length ? sel[0] : 0;
+  await frmPaintPage();
+  frmSay(FRM.make.length ? T.frmMade(FRM.make.length) : '');
+}
+
+async function frmPaintPage() {
+  const p = PAGES[FRM.page];
+  const cv = $('frmPageCv');
+  const page = await DOC.getPage(p.src);
+  /* ПОВОРОТ УЧТЁН ТАК ЖЕ, КАК У ПОДПИСИ: человек обводит то, что ВИДИТ, а доли считаются
+     от видимого кадра - воркер переводит их в систему страницы сам. */
+  const v0 = page.getViewport({ scale: 1, rotation: (page.rotate + p.rot) % 360 });
+  const wide = Math.min(520, (window.innerWidth || 360) - 56);
+  const sc = wide / v0.width;
+  const v = page.getViewport({ scale: sc, rotation: (page.rotate + p.rot) % 360 });
+  cv.width = Math.ceil(v.width); cv.height = Math.ceil(v.height);
+  cv.style.width = Math.ceil(v.width) + 'px';
+  await page.render({ canvasContext: cv.getContext('2d'), viewport: v }).promise;
+  $('frmPage').textContent = T.frmPage(FRM.page + 1, PAGES.length);
+  const box = $('frmBox');
+  box.style.width = Math.round(cv.clientWidth * 0.5) + 'px';
+  box.style.height = Math.round(cv.clientHeight * 0.045) + 'px';
+  box.style.left = Math.round(cv.clientWidth * 0.1) + 'px';
+  box.style.top = Math.round(cv.clientHeight * 0.1) + 'px';
+  frmWireBox();
+}
+
+function frmWireBox() {
+  const cv = $('frmPageCv'), box = $('frmBox'), grip = $('frmGrip');
+  if (box.dataset.wired) return;
+  box.dataset.wired = '1';
+  let mode = '', sx = 0, sy = 0, bx = 0, by = 0, bw = 0, bh = 0;
+  const clamp = () => {
+    const W = cv.clientWidth, H = cv.clientHeight;
+    let w = Math.max(18, Math.min(box.offsetWidth, W));
+    let h = Math.max(10, Math.min(box.offsetHeight, H));
+    box.style.width = w + 'px'; box.style.height = h + 'px';
+    box.style.left = Math.max(0, Math.min(box.offsetLeft, W - w)) + 'px';
+    box.style.top = Math.max(0, Math.min(box.offsetTop, H - h)) + 'px';
+  };
+  const down = (e, m) => {
+    mode = m; sx = e.clientX; sy = e.clientY;
+    bx = box.offsetLeft; by = box.offsetTop; bw = box.offsetWidth; bh = box.offsetHeight;
+    e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId);
+    e.preventDefault(); e.stopPropagation();
+  };
+  const move = (e) => {
+    if (!mode) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (mode === 'move') {
+      box.style.left = (bx + dx) + 'px'; box.style.top = (by + dy) + 'px';
+    } else {
+      box.style.width = (bw + dx) + 'px'; box.style.height = (bh + dy) + 'px';
+    }
+    clamp();
+    e.preventDefault();
+  };
+  const up = () => { mode = ''; };
+  box.onpointerdown = (e) => { if (e.target !== grip) down(e, 'move'); };
+  grip.onpointerdown = (e) => down(e, 'size');
+  box.onpointermove = grip.onpointermove = move;
+  box.onpointerup = grip.onpointerup = up;
+  box.onpointercancel = grip.onpointercancel = up;
+}
+
+function frmAddCommit() {
+  const nm = ($('frmNm').value || '').trim();
+  const kind = $('frmKind').value;
+  if (!nm) { frmSay(T.frmNeedName, 'bad'); return false; }
+  /* ИМЯ ПОЛЯ - ЛАТИНИЦА БЕЗ ПРОБЕЛОВ, И ЭТО НЕ ПРИДИРКА. Оно уезжает ключом JSON и
+     ложится в `/T` документа; кириллица и пробелы в нём живут плохо в чужих читалках, а
+     заметит это человек у получателя. Говорим правило СРАЗУ, а не отказом после. */
+  if (!/^[A-Za-z0-9_]+$/.test(nm)) { frmSay(T.frmBadName, 'bad'); return false; }
+  let opts = [];
+  if (kind === 'choice') {
+    opts = ($('frmOpts').value || '').split(',').map((x) => x.trim()).filter(Boolean);
+    if (opts.length < 2) { frmSay(T.frmNeedOpts, 'bad'); return false; }
+  }
+  const cv = $('frmPageCv'), box = $('frmBox');
+  const it = {
+    name: nm, kind: kind, page: PAGES[FRM.page].src,
+    nx: +(box.offsetLeft / cv.clientWidth).toFixed(4),
+    ny: +(box.offsetTop / cv.clientHeight).toFixed(4),
+    nw: +(box.offsetWidth / cv.clientWidth).toFixed(4),
+    nh: +(box.offsetHeight / cv.clientHeight).toFixed(4),
+  };
+  if (opts.length) it.options = opts;
+  FRM.make.push(it);
+  $('frmNm').value = '';
+  $('frmMade').textContent = T.frmMade(FRM.make.length);
+  frmSay(T.frmMade(FRM.make.length));
+  return true;
+}
+
+async function frmGo() {
+  const off = whyOff();
+  if (off) { frmSay(off, 'bad'); return; }
+  /* ═══ СОЗДАНИЕ И ЗАПОЛНЕНИЕ - ДВА РАЗНЫХ ДЕЛА, И ПОРЯДОК ВАЖЕН ═══
+     Есть незакреплённые новые поля - сперва создаём их и ПЕРЕЧИТЫВАЕМ форму: заполнять
+     можно только то, что воркер уже видит. Слепи мы оба шага в один запрос - отказ на
+     половине оставил бы человека в неведении, какая половина прошла. */
+  if ($('frmMake').hidden === false && ($('frmNm').value || '').trim()) {
+    if (!frmAddCommit()) return;
+  }
+  if (FRM.make.length) {
+    frmSay(T.working);
+    const ok = await apply({ op: 'form_make', spec: JSON.stringify(FRM.make) });
+    if (!ok) { frmSay($('say').textContent || T.working, 'bad'); return; }
+    const n = FRM.make.length;
+    FRM.make = [];
+    $('frmMade').textContent = '';
+    $('frmMake').hidden = true;
+    await frmOpen();
+    say(T.frmMadeDone(n), 'ok');
+    return;
+  }
+  const vals = {};
+  for (const el of $('frmList').querySelectorAll('[data-name]')) {
+    if (el.disabled) continue;
+    const nm = el.dataset.name;
+    if (el.type === 'checkbox') {
+      vals[nm] = el.checked ? el.dataset.on : '/Off';
+    } else {
+      vals[nm] = el.value;
+    }
+  }
+  if (!Object.keys(vals).length) { frmSay(T.frmNothing, 'bad'); return; }
+  frmSay(T.working);
+  const ok = await apply({ op: 'form_fill', fields: JSON.stringify(vals) });
+  if (!ok) { frmSay($('say').textContent || T.working, 'bad'); return; }
+  const cyr = Object.values(vals).some((v) => /[^\u0000-\u00ff]/.test(String(v)));
+  frmClose();
+  /* НЕЛАТИНИЦУ НАЗЫВАЕМ ЧЕЛОВЕКУ, А НЕ ПРЯЧЕМ В ОТВЕТЕ ВОРКЕРА: читалка перерисует поля
+     сама, но в части просмотрщиков поле выглядит пустым, и об этом он должен узнать от
+     нас, а не от получателя документа. */
+  say(T.frmDone(Object.keys(vals).length) + (cyr ? ' ' + T.frmCyr : ''), 'ok');
+}
+
 async function sigKeep() {
   if (!INIT) { sigSay(T.noSign); return; }
   const dflt = (SIG_PICK >= 0 && SIG_LIST[SIG_PICK]) ? SIG_LIST[SIG_PICK].name : '';
@@ -1141,6 +1566,10 @@ function texts() {
   };
   $('bZip').onclick = async () => { await apply({ op: 'compress' }); };
   $('bSign').onclick = sigOpen;
+  $('bForm').onclick = frmOpen;
+  $('bFrmCancel').onclick = frmClose;
+  $('bFrmAdd').onclick = frmAddMode;
+  $('bFrmGo').onclick = frmGo;
   $('bSigCancel').onclick = sigClose;
   $('bSigGo').onclick = sigNext;
   $('bSigKeep').onclick = sigKeep;
