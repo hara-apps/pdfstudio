@@ -169,6 +169,45 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
   position:absolute; right:-11px; bottom:-11px; width:26px; height:26px; border-radius:50%;
   background:var(--accent); border:2px solid #fff; touch-action:none; cursor:nwse-resize;
 }
+/* ═══ ЭКРАН СКРЫТИЯ ДАННЫХ ═══
+   Устроен как экран форм и подписи - человек уже знает этот язык. Отличие одно и оно
+   несущее: областей БОЛЬШЕ ОДНОЙ, поэтому обведённое складывается в список, и видно, что
+   именно уйдёт, ДО нажатия. Скрытие необратимо, и «применилось не то» здесь дороже. */
+#rdt{
+  position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.92); display:none;
+  overflow:auto; padding:12px calc(12px + env(safe-area-inset-left)) 96px;
+}
+#rdt.on{display:block}
+#rdt .card{
+  max-width:560px; margin:0 auto; background:var(--card); border:1px solid var(--line);
+  border-radius:14px; padding:12px;
+}
+#rdt h2{font-size:16px; margin:0 0 8px}
+#rdtWarn{
+  margin:0 0 10px; padding:9px 11px; font-size:13px; border-radius:10px;
+  background:var(--warn-bg); color:var(--warn);
+}
+#rdtWrap{position:relative; display:inline-block; max-width:100%}
+#rdtWrap canvas{max-width:100%; height:auto; display:block; border-radius:8px}
+#rdtBox{
+  position:absolute; border:2px dashed #fb7185; background:rgba(251,113,133,.22);
+  touch-action:none; cursor:move;
+}
+#rdtGrip{
+  position:absolute; right:-9px; bottom:-9px; width:20px; height:20px; border-radius:50%;
+  background:#fb7185; border:2px solid #fff; touch-action:none; cursor:nwse-resize;
+}
+/* УЖЕ ОБВЕДЁННЫЕ ОБЛАСТИ ВИДНЫ НА ЛИСТЕ, а не только числами в списке: человек обводит
+   глазами и проверять себя будет тоже глазами. */
+.rdtDone{position:absolute; background:rgba(0,0,0,.72); pointer-events:none}
+#rdtList{font-size:13px; color:var(--dim); padding-top:8px}
+#rdtList div{padding:2px 0}
+#rdtBar{
+  position:fixed; left:0; right:0; bottom:0; z-index:61; display:flex; gap:8px;
+  padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:var(--card);
+  border-top:1px solid var(--line);
+}
+#rdtBar button{flex:1}
 /* ═══ ЭКРАН ФОРМ ═══
    УСТРОЕН КАК ЭКРАН ПОДПИСИ, И ЭТО НЕ ЛЕНЬ: человек уже знает, что полноэкранная карточка
    поверх сетки - это «отдельное дело с этим документом», и второй язык интерфейса в одной
@@ -248,6 +287,7 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
     <button class="sm" id="bZip">🗜 Сжать</button>
     <button class="sm" id="bSign">✍️ Подпись</button>
     <button class="sm" id="bForm">📋 Формы</button>
+    <button class="sm" id="bRdt">🛡 Скрыть данные</button>
     <button class="sm" id="bReset">↩︎ Сначала</button>
   </div>
 </header>
@@ -265,6 +305,28 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
 </div>
 
 <div id="zoom"><button class="close sm" id="bZclose">✕</button><div id="zbox"></div></div>
+
+<!-- СКРЫТИЕ ДАННЫХ. Предупреждение стоит ПЕРВОЙ строкой и видно ДО обводки: сказанное
+     после применения читается как оправдание задним числом (тот же порядок, что у
+     дисклеймера подписи). -->
+<div id="rdt">
+  <div class="card">
+    <h2 id="rdtTtl"></h2>
+    <div id="rdtWarn"></div>
+    <div id="rdtPage" class="foot" style="padding:0 0 6px"></div>
+    <div id="rdtWrap">
+      <canvas id="rdtPageCv"></canvas>
+      <div id="rdtBox"><div id="rdtGrip"></div></div>
+    </div>
+    <div id="rdtList"></div>
+    <div id="rdtSay" style="font-size:13px; color:var(--dim); padding-top:8px"></div>
+  </div>
+</div>
+<div id="rdtBar" hidden>
+  <button id="bRdtCancel"></button>
+  <button id="bRdtAdd" class="sm"></button>
+  <button id="bRdtGo" class="pri"></button>
+</div>
 
 <!-- ФОРМЫ. Экран один на три дела: показать найденные поля, заполнить их, а если полей нет -
      СОЗДАТЬ. Три отдельных входа в меню означали бы, что человек выбирает между словами,
@@ -396,6 +458,25 @@ const T = {
        больше НЕТ: формулировка юридически значимая, и читать разное в чате и в студии
        человек не должен. Метка на месте - значит страницу открыли файлом, а не выкладкой. */
     signNote: '✍️ Это ВИЗУАЛЬНАЯ подпись - картинка поверх страницы, как от руки на распечатке. Юридической силы она не имеет и квалифицированной ЭЦП не является: файл не заверен и подписант криптографически не подтверждён.',
+    /* ═══ СКРЫТИЕ ДАННЫХ ═══
+       ОБЕЩАНИЕ НАЗВАНО ОБЪЁМОМ, А НЕ СЛОВОМ «БЕЗОПАСНО»: человек должен понимать, что
+       уходит (текст, картинка, свойства) и что уходит ЛИШНЕГО (вся пересечённая строка).
+       «Надёжно удалено» без перечня - обещание, объём которого он проверить не может. */
+    rdtTtl: 'Скрыть данные',
+    rdtWarn: '⚠️ Обведённое УДАЛЯЕТСЯ из файла, а не закрашивается: уходит текст, пиксели '
+           + 'картинки под областью и свойства документа (автор, программа, история '
+           + 'правок). Отменить нельзя - скачай результат и проверь. Вместе с областью '
+           + 'уходит ВСЯ строка, которая её пересекает: при скрытии данных лучше убрать '
+           + 'лишнее, чем оставить нужное.',
+    rdtPage: (n, all) => 'Страница ' + n + ' из ' + all + ' - обведи, что убрать; угол меняет размер',
+    rdtAdd: '+ область',
+    rdtCancel: 'Отмена',
+    rdtGo: '🛡 Убрать',
+    rdtList: (n) => 'Областей к удалению: ' + n,
+    rdtNone: 'Обведи хотя бы одну область и нажми «+ область».',
+    rdtDone: (n) => 'Готово. Областей убрано: ' + n + '. Скачай файл и проверь - отменить нельзя.',
+    rdtShared: 'ВНИМАНИЕ: эта картинка есть на странице ещё раз, вне обведённого - там она '
+             + 'осталась как была. Обведи и её, если нужно убрать везде.',
     /* ═══ ФОРМЫ ═══
        ГРАНИЦА НАЗВАНА ЧЕЛОВЕКУ ЕГО СЛОВАМИ, А НЕ НАШИМИ. «XFA» ему ничего не говорит,
        поэтому отказ объясняет, ЧТО это значит и ЧЕМ открыть; «полей не найдено» на такой
@@ -475,6 +556,21 @@ const T = {
     signTtl: 'Signature on the page',
     /* Подставляется при выкладке из i18n - см. ru-половину выше. */
     signNote: '✍️ This is a VISUAL signature - an image drawn over the page, like ink on a printout. It carries no legal force and is not a qualified digital signature: the file is not certified and the signer is not cryptographically verified.',
+    rdtTtl: 'Hide data',
+    rdtWarn: '⚠️ What you select is DELETED from the file, not covered up: the text, the '
+           + 'image pixels under the area and the document properties (author, software, '
+           + 'edit history) all go. This cannot be undone - download the result and check. '
+           + 'The WHOLE line crossing the area is removed too: when hiding data it is '
+           + 'better to remove too much than to leave something behind.',
+    rdtPage: (n, all) => 'Page ' + n + ' of ' + all + ' - select what to remove; the corner resizes',
+    rdtAdd: '+ area',
+    rdtCancel: 'Cancel',
+    rdtGo: '🛡 Remove',
+    rdtList: (n) => 'Areas to remove: ' + n,
+    rdtNone: 'Select at least one area and tap "+ area".',
+    rdtDone: (n) => 'Done. Areas removed: ' + n + '. Download the file and check - this cannot be undone.',
+    rdtShared: 'WARNING: this image appears on the page again, outside your selection - '
+             + 'there it was left as it was. Select it too if it must go everywhere.',
     frmTtl: 'Form fields',
     frmLoading: 'Checking what fields the document has…',
     frmNone: 'This document has no fillable fields. You can CREATE them: tap "+ field", '
@@ -522,7 +618,7 @@ const T = {
   },
 }[LANG];
 
-const VERSION = '019a11da850f';
+const VERSION = 'ba0a169f98ed';
 /* АДРЕСА - ПАРАМЕТРОМ ССЫЛКИ СИЛЬНЕЕ ЗАШИТОГО ПРИ ВЫКЛАДКЕ. Причина записана в
    publish_static.page_url и стоила полдня: `https://hara-search.laynenorstrud.workers.dev` подставляется В МОМЕНТ ДЕПЛОЯ, и
    если Worker тогда не был в реестре, страница остаётся без адреса НАВСЕГДА. Ссылку же
@@ -791,7 +887,11 @@ function rotate(deg) {
    означали бы два прохода по стомегабайтному документу и два повода разойтись
    состояниями. Порядок применяется ПЕРВЫМ, повороты - вторым и уже по НОВЫМ номерам:
    наоборот они легли бы на страницы, которых в результате нет. */
+/* Ответ ПОСЛЕДНЕЙ операции: заполняется в `apply`, читается тем, кому нужны его слова. */
+let LAST_RES = null;
+
 async function apply(extra) {
+  LAST_RES = null;
   const off = whyOff();
   if (off) { say(off, 'bad'); return false; }
   say(T.working);
@@ -828,6 +928,11 @@ async function apply(extra) {
       if (!r3.ok || !j3 || !j3.ok) {
         say((j3 && (j3.human || j3.error)) || ('HTTP ' + r3.status), 'bad'); return false;
       }
+      /* ОТВЕТ ПОСЛЕДНЕЙ ОПЕРАЦИИ ОСТАЁТСЯ ДОСТУПНЫМ ВЫЗЫВАЮЩЕМУ. `apply` отдаёт только
+         «вышло/не вышло», а воркер иногда говорит БОЛЬШЕ: скрытие данных предупреждает,
+         что картинка есть на странице ещё раз. Потеряй мы это по дороге - человек решит,
+         что убрал лицо, а оно видно рядом. */
+      LAST_RES = j3.res || null;
     }
     say(T.ready, 'ok');
     return true;
@@ -1155,6 +1260,163 @@ async function sigApply() {
   if (!ok) { sigSay($('say').textContent || T.working); return; }
   sigClose();
   say(T.signPlaced, 'ok');
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   СКРЫТИЕ ДАННЫХ: ОБВЕСТИ ОБЛАСТИ, УВИДЕТЬ СПИСОК, ПРИМЕНИТЬ
+   ═══════════════════════════════════════════════════════════════════════════════
+   ОБЛАСТЕЙ БОЛЬШЕ ОДНОЙ, И ОНИ НАКАПЛИВАЮТСЯ ДО ПРИМЕНЕНИЯ. Скрытие необратимо, поэтому
+   человек должен видеть ВЕСЬ список и обведённое на листе ДО того, как нажмёт: «применилось
+   не то» здесь дороже, чем лишний тап. */
+let RDT = { areas: [], page: 0 };
+
+const rdtSay = (t, cls) => {
+  const e = $('rdtSay');
+  e.textContent = t || '';
+  e.style.color = cls === 'bad' ? 'var(--bad)' : 'var(--dim)';
+};
+
+function rdtClose() {
+  $('rdt').classList.remove('on');
+  $('rdtBar').hidden = true;
+}
+
+async function rdtOpen() {
+  if (!DOC) return;
+  const off = whyOff();
+  if (off) { say(off, 'bad'); return; }
+  RDT = { areas: [], page: 0 };
+  const sel = PAGES.map((p, i) => p.sel ? i : -1).filter((i) => i >= 0);
+  RDT.page = sel.length ? sel[0] : 0;
+  $('rdtTtl').textContent = T.rdtTtl;
+  /* ПРЕДУПРЕЖДЕНИЕ - ПЕРВОЙ СТРОКОЙ И ДО ОБВОДКИ, как дисклеймер подписи: сказанное
+     после применения читается как оправдание задним числом. */
+  $('rdtWarn').textContent = T.rdtWarn;
+  $('bRdtCancel').textContent = T.rdtCancel;
+  $('bRdtAdd').textContent = T.rdtAdd;
+  $('bRdtGo').textContent = T.rdtGo;
+  $('rdt').classList.add('on');
+  $('rdtBar').hidden = false;
+  rdtSay('');
+  rdtPaintList();
+  await rdtPaintPage();
+}
+
+async function rdtPaintPage() {
+  const p = PAGES[RDT.page];
+  const cv = $('rdtPageCv');
+  const page = await DOC.getPage(p.src);
+  /* ПОВОРОТ УЧТЁН ТАК ЖЕ, КАК У ПОДПИСИ И ПОЛЕЙ: человек обводит то, что ВИДИТ, доли
+     считаются от видимого кадра, а воркер переводит их в систему страницы сам. */
+  const v0 = page.getViewport({ scale: 1, rotation: (page.rotate + p.rot) % 360 });
+  const wide = Math.min(520, (window.innerWidth || 360) - 56);
+  const sc = wide / v0.width;
+  const v = page.getViewport({ scale: sc, rotation: (page.rotate + p.rot) % 360 });
+  cv.width = Math.ceil(v.width); cv.height = Math.ceil(v.height);
+  cv.style.width = Math.ceil(v.width) + 'px';
+  await page.render({ canvasContext: cv.getContext('2d'), viewport: v }).promise;
+  $('rdtPage').textContent = T.rdtPage(RDT.page + 1, PAGES.length);
+  const box = $('rdtBox');
+  box.style.width = Math.round(cv.clientWidth * 0.4) + 'px';
+  box.style.height = Math.round(cv.clientHeight * 0.05) + 'px';
+  box.style.left = Math.round(cv.clientWidth * 0.1) + 'px';
+  box.style.top = Math.round(cv.clientHeight * 0.1) + 'px';
+  rdtWireBox();
+  rdtPaintDone();
+}
+
+/* УЖЕ ОБВЕДЁННОЕ РИСУЕМ НА ЛИСТЕ: список числами человек не сверит глазами с документом,
+   а обводил он глазами. */
+function rdtPaintDone() {
+  const wrap = $('rdtWrap'), cv = $('rdtPageCv');
+  for (const el of [...wrap.querySelectorAll('.rdtDone')]) el.remove();
+  for (const a of RDT.areas) {
+    if (a.page !== PAGES[RDT.page].src) continue;
+    const d = document.createElement('div');
+    d.className = 'rdtDone';
+    d.style.left = (a.nx * cv.clientWidth) + 'px';
+    d.style.top = (a.ny * cv.clientHeight) + 'px';
+    d.style.width = (a.nw * cv.clientWidth) + 'px';
+    d.style.height = (a.nh * cv.clientHeight) + 'px';
+    wrap.appendChild(d);
+  }
+}
+
+function rdtPaintList() {
+  const box = $('rdtList');
+  box.innerHTML = '';
+  if (!RDT.areas.length) return;
+  const head = document.createElement('div');
+  head.textContent = T.rdtList(RDT.areas.length);
+  box.appendChild(head);
+}
+
+function rdtWireBox() {
+  const cv = $('rdtPageCv'), box = $('rdtBox'), grip = $('rdtGrip');
+  if (box.dataset.wired) return;
+  box.dataset.wired = '1';
+  let mode = '', sx = 0, sy = 0, bx = 0, by = 0, bw = 0, bh = 0;
+  const clamp = () => {
+    const W = cv.clientWidth, H = cv.clientHeight;
+    const w = Math.max(14, Math.min(box.offsetWidth, W));
+    const h = Math.max(8, Math.min(box.offsetHeight, H));
+    box.style.width = w + 'px'; box.style.height = h + 'px';
+    box.style.left = Math.max(0, Math.min(box.offsetLeft, W - w)) + 'px';
+    box.style.top = Math.max(0, Math.min(box.offsetTop, H - h)) + 'px';
+  };
+  const down = (e, m) => {
+    mode = m; sx = e.clientX; sy = e.clientY;
+    bx = box.offsetLeft; by = box.offsetTop; bw = box.offsetWidth; bh = box.offsetHeight;
+    if (e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId);
+    e.preventDefault(); e.stopPropagation();
+  };
+  const move = (e) => {
+    if (!mode) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (mode === 'move') {
+      box.style.left = (bx + dx) + 'px'; box.style.top = (by + dy) + 'px';
+    } else {
+      box.style.width = (bw + dx) + 'px'; box.style.height = (bh + dy) + 'px';
+    }
+    clamp();
+    e.preventDefault();
+  };
+  const up = () => { mode = ''; };
+  box.onpointerdown = (e) => { if (e.target !== grip) down(e, 'move'); };
+  grip.onpointerdown = (e) => down(e, 'size');
+  box.onpointermove = grip.onpointermove = move;
+  box.onpointerup = grip.onpointerup = up;
+  box.onpointercancel = grip.onpointercancel = up;
+}
+
+function rdtAdd() {
+  const cv = $('rdtPageCv'), box = $('rdtBox');
+  if (!cv.clientWidth) return;
+  RDT.areas.push({
+    page: PAGES[RDT.page].src,
+    nx: +(box.offsetLeft / cv.clientWidth).toFixed(4),
+    ny: +(box.offsetTop / cv.clientHeight).toFixed(4),
+    nw: +(box.offsetWidth / cv.clientWidth).toFixed(4),
+    nh: +(box.offsetHeight / cv.clientHeight).toFixed(4),
+  });
+  rdtPaintList();
+  rdtPaintDone();
+  rdtSay(T.rdtList(RDT.areas.length));
+}
+
+async function rdtGo() {
+  const off = whyOff();
+  if (off) { rdtSay(off, 'bad'); return; }
+  if (!RDT.areas.length) { rdtSay(T.rdtNone, 'bad'); return; }
+  rdtSay(T.working);
+  const n = RDT.areas.length;
+  const ok = await apply({ op: 'redact', areas: JSON.stringify(RDT.areas) });
+  if (!ok) { rdtSay($('say').textContent || T.working, 'bad'); return; }
+  rdtClose();
+  /* ПРО ВТОРУЮ ВСТАВКУ КАРТИНКИ ГОВОРИМ ЗДЕСЬ ЖЕ: воркер её называет, и терять это
+     предупреждение по дороге нельзя - человек думает, что убрал лицо, а оно видно рядом. */
+  const shared = (LAST_RES && LAST_RES.shared_images || []).length;
+  say(T.rdtDone(n) + (shared ? ' ' + T.rdtShared : ''), 'ok');
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -1567,6 +1829,10 @@ function texts() {
   $('bZip').onclick = async () => { await apply({ op: 'compress' }); };
   $('bSign').onclick = sigOpen;
   $('bForm').onclick = frmOpen;
+  $('bRdt').onclick = rdtOpen;
+  $('bRdtCancel').onclick = rdtClose;
+  $('bRdtAdd').onclick = rdtAdd;
+  $('bRdtGo').onclick = rdtGo;
   $('bFrmCancel').onclick = frmClose;
   $('bFrmAdd').onclick = frmAddMode;
   $('bFrmGo').onclick = frmGo;
