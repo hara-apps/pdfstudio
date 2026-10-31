@@ -96,6 +96,17 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
   border-radius:50%; border:1px solid var(--line); background:var(--card);
   font-size:13px; padding:0; min-height:0;
 }
+/* РАЗРЕЗ ЖИВЁТ НА САМОМ ХОЛСТЕ, А НЕ НА СВОЁМ ЭКРАНЕ: смысл кнопки - «здесь кончается
+   первый файл», и понять его можно только видя страницы по обе стороны от неё. Отдельный
+   экран пришлось бы заполнить теми же картинками, то есть второй копией холста. */
+.pg .cut{
+  position:absolute; top:50%; right:-9px; transform:translateY(-50%);
+  width:20px; height:20px; line-height:18px; border-radius:50%;
+  border:1px solid var(--line); background:var(--card);
+  font-size:11px; padding:0; min-height:0; z-index:2; opacity:.55;
+}
+.pg .cut.on{opacity:1; border-color:var(--accent); background:var(--sel)}
+.pg.cutAfter{border-right:3px solid var(--accent)}
 #drop{
   margin:14px 12px; padding:26px 14px; border:2px dashed var(--line); border-radius:12px;
   text-align:center; color:var(--dim); background:var(--card);
@@ -192,21 +203,62 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
   margin:0 0 10px; padding:9px 11px; font-size:13px; border-radius:10px;
   background:var(--warn-bg); color:var(--warn);
 }
-#rdtWrap{position:relative; display:inline-block; max-width:100%}
-#rdtWrap canvas{max-width:100%; height:auto; display:block; border-radius:8px}
-#rdtBox{
+/* ═══ ЛИСТ С РАМКОЙ - ОДИН КЛАСС НА ВСЕ ЭКРАНЫ, КОТОРЫЕ ЧТО-ТО ОБВОДЯТ ═══
+   Их теперь два (скрытие данных и обрезка полей), и своя копия этих правил по ID у
+   каждого разошлась бы на первой правке - ровно тот класс, который ловит pdf43. Цвет
+   рамки РАЗНЫЙ ПО СМЫСЛУ: красная «уберём отсюда», синяя «оставим вот это», и это
+   единственное, что задаётся поверх класса. */
+.pickWrap{position:relative; display:inline-block; max-width:100%}
+.pickWrap canvas{max-width:100%; height:auto; display:block; border-radius:8px}
+.pickBox{
   position:absolute; border:2px dashed #fb7185; background:rgba(251,113,133,.22);
   touch-action:none; cursor:move;
 }
-#rdtGrip{
+.pickGrip{
   position:absolute; right:-9px; bottom:-9px; width:20px; height:20px; border-radius:50%;
   background:#fb7185; border:2px solid #fff; touch-action:none; cursor:nwse-resize;
 }
+/* ОБРЕЗКА ОСТАВЛЯЕТ, А НЕ УБИРАЕТ - поэтому её рамка не красная: человек видит внутри
+   рамки то, что останется, и красный тут обещал бы обратное. */
+#crp .pickBox{border-color:#60a5fa; background:rgba(96,165,250,.14)}
+#crp .pickGrip{background:#60a5fa}
 /* УЖЕ ОБВЕДЁННЫЕ ОБЛАСТИ ВИДНЫ НА ЛИСТЕ, а не только числами в списке: человек обводит
    глазами и проверять себя будет тоже глазами. */
 .rdtDone{position:absolute; background:rgba(0,0,0,.72); pointer-events:none}
 #rdtList{font-size:13px; color:var(--dim); padding-top:8px}
 #rdtList div{padding:2px 0}
+/* ═══ ЭКРАН ПОМЕТОК ═══
+   РАМКА ЖЁЛТАЯ У ВЫДЕЛЕНИЯ И КРАСНАЯ У ОБВОДКИ - ТЕ ЖЕ ЦВЕТА, ЧТО УЕДУТ В ФАЙЛ. Покажи
+   мы одну рамку на все виды - человек выбирал бы вид вслепую и узнавал результат из
+   скачанного файла (закон №75: экран проверяется тем, что на нём видно). */
+#ann h2{font-size:16px; margin:0 0 8px}
+#annKinds{display:flex; gap:8px; flex-wrap:wrap; padding-bottom:6px}
+#annKinds button.on{outline:2px solid var(--accent)}
+#ann .pickBox{border-color:#fbbf24; background:rgba(251,191,36,.22)}
+#ann .pickGrip{background:#fbbf24}
+#ann.box .pickBox{border-color:#fb7185; background:rgba(251,113,133,.16)}
+#ann.box .pickGrip{background:#fb7185}
+#annText{width:100%; margin-top:8px}
+#annList{font-size:13px; color:var(--dim); padding-top:8px}
+#annList div{padding:2px 0}
+#annBurnRow{display:flex; align-items:center; gap:8px; padding-top:10px; font-size:13.5px}
+#annBurnNote{padding-top:4px}
+.annDone{position:absolute; pointer-events:none; border-radius:2px}
+.annDone.high{background:rgba(251,191,36,.42)}
+.annDone.box{border:2px solid rgba(251,113,133,.95)}
+.annDone.note{background:rgba(251,191,36,.75); border:1px solid rgba(180,120,0,.9)}
+/* ═══ ЭКРАН «ЕЩЁ»: ПО СТРОКЕ НА ОПЕРАЦИЮ ═══
+   Классами, а не правилами по ID: пять операций - это пять ОДИНАКОВЫХ строк, и своя копия
+   стилей у каждой разъехалась бы на первой правке (тот же класс, что ловит pdf43). */
+.morRow{padding:10px 0; border-top:1px solid var(--line)}
+.morRow:first-of-type{border-top:0}
+.morName{font-size:14px; font-weight:600; padding-bottom:6px}
+.morLine{display:flex; gap:6px; align-items:center; flex-wrap:wrap}
+.morLine input, .morLine select{
+  flex:1 1 120px; min-width:0; padding:7px 9px; font-size:14px; border-radius:8px;
+  border:1px solid var(--line); background:var(--card); color:inherit;
+}
+.morLine button{flex:0 0 auto}
 /* ═══ ЭКРАН ФОРМ ═══ */
 #frm h2{font-size:16px; margin:0 0 8px}
 /* ПОЛЕ - СТРОКА С ПОДПИСЬЮ СВЕРХУ: имя поля в анкете бывает длинным («Фамилия, имя и
@@ -248,6 +300,32 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
 .cmpHit.ins{background:rgba(74,222,128,.34); outline:1px solid rgba(74,222,128,.85)}
 .cmpHit.rep{background:rgba(250,204,21,.34); outline:1px solid rgba(250,204,21,.9)}
 .cmpHit.mv{background:rgba(96,165,250,.30); outline:1px dashed rgba(96,165,250,.9)}
+/* ═══ ЭКРАН ПРАВКИ ТЕКСТА ═══
+   ТАП-ЗОНА ОБЯЗАНА БЫТЬ ВИДНА ДО ТАПА. Холст это картинка, и строка, по которой можно
+   тронуть, ничем не отличается от строки, по которой нельзя: человек тапал бы наугад и
+   решил бы, что экран не работает. Поэтому зоны подсвечены всегда, а не по наведению -
+   пальцем наведения не бывает.
+   ЦВЕТ - СИНИЙ, КАК У ОБРЕЗКИ, А НЕ КРАСНЫЙ, КАК У СКРЫТИЯ ДАННЫХ: красный на этом
+   холсте уже значит «отсюда уберём», и второе значение у того же цвета человек прочитал
+   бы первым выученным. */
+#txtWrap{position:relative; display:inline-block; max-width:100%}
+#txtWrap canvas{max-width:100%; height:auto; display:block; border-radius:8px}
+.txtHit{
+  position:absolute; border-radius:2px; cursor:pointer;
+  background:rgba(96,165,250,.16); outline:1px solid rgba(96,165,250,.55);
+}
+.txtHit.sel{background:rgba(250,204,21,.34); outline:1.5px solid rgba(250,204,21,.95)}
+.txtHit.done{background:rgba(74,222,128,.26); outline:1px solid rgba(74,222,128,.8)}
+#txtWarn{
+  margin:0 0 10px; padding:9px 11px; font-size:13px; border-radius:10px;
+  background:var(--warn-bg); color:var(--warn);
+}
+#txtNav{display:flex; gap:8px; align-items:center; padding:0 0 8px}
+#txtNav button{flex:0 0 auto}
+#txtWas{font-size:12.5px; color:var(--dim); line-height:1.45; padding:8px 0 4px;
+  word-break:break-word}
+#txtInput{width:100%}
+#txtNote{font-size:12.5px; color:var(--warn); line-height:1.45; padding-top:6px}
 #cmpLeg{display:flex; flex-wrap:wrap; gap:10px; font-size:12px; color:var(--dim); padding:8px 0}
 #cmpLeg i{display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:4px}
 #cmpSum{
@@ -287,17 +365,28 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
     <button class="sm" id="bKeep">Оставить выделенные</button>
     <button class="sm" id="bDel">Удалить выделенные</button>
     <button class="sm" id="bZip">🗜 Сжать</button>
+    <button class="sm" id="bMrg">🔗 Объединить</button>
+    <button class="sm" id="bSpl">✂️ Разделить</button>
+    <button class="sm" id="bSplGo" hidden>✂️ Разрезать</button>
     <button class="sm" id="bSign">✍️ Подпись</button>
     <button class="sm" id="bForm">📋 Формы</button>
+    <button class="sm" id="bCrop">⬚ Обрезать поля</button>
+    <button class="sm" id="bMore">✨ Ещё</button>
     <button class="sm" id="bRdt">🛡 Скрыть данные</button>
     <button class="sm" id="bCmp">🔍 Сравнить версии</button>
+    <button class="sm" id="bTxt">✏️ Править текст</button>
+    <button class="sm" id="bAnn">🖍 Пометки</button>
     <button class="sm" id="bReset">↩︎ Сначала</button>
   </div>
 </header>
 
 <div id="note" hidden></div>
 <div id="drop">Перетащи сюда PDF или нажми, чтобы выбрать</div>
-<input type="file" id="file" accept="application/pdf,.pdf" hidden>
+<!-- КАРТИНКИ ПРИНИМАЮТСЯ ТЕМ ЖЕ ВВОДОМ И СРАЗУ НЕСКОЛЬКО: «сфоткал документ телефоном»
+     это не отдельная функция, а другой входной формат. `multiple` нужен ровно здесь -
+     порядок страниц задаёт человек, и выбирает он сразу набор. -->
+<input type="file" id="file" multiple hidden
+       accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,image/tiff,image/gif">
 <div id="grid"></div>
 <div id="say"></div>
 <div class="foot" id="foot"></div>
@@ -317,9 +406,9 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
     <h2 id="rdtTtl"></h2>
     <div id="rdtWarn"></div>
     <div id="rdtPage" class="foot" style="padding:0 0 6px"></div>
-    <div id="rdtWrap">
+    <div id="rdtWrap" class="pickWrap">
       <canvas id="rdtPageCv"></canvas>
-      <div id="rdtBox"><div id="rdtGrip"></div></div>
+      <div id="rdtBox" class="pickBox"><div id="rdtGrip" class="pickGrip"></div></div>
     </div>
     <div id="rdtList"></div>
     <div id="rdtSay" style="font-size:13px; color:var(--dim); padding-top:8px"></div>
@@ -329,6 +418,126 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
   <button id="bRdtCancel"></button>
   <button id="bRdtAdd" class="sm"></button>
   <button id="bRdtGo" class="pri"></button>
+</div>
+
+<!-- ПОМЕТКИ. Устроены как скрытие данных - обводишь область, она копится в списке, -
+     и это не копипаста, а тот же язык экрана: человек уже знает, что рамка плюс список
+     плюс «Применить» это «несколько мест за раз».
+     ОТЛИЧИЕ ОДНО И ОНО НЕСУЩЕЕ: у скрытия исход ОДИН и необратимый, а здесь исхода ДВА.
+     По умолчанию пометки остаются настоящими аннотациями PDF - подвижными и снимаемыми,
+     - и это ровно то, чего человек от пометок и ждёт: разметил чужой договор, показал
+     юристу, снял. «Впечатать» делает их частью страницы НАВСЕГДА. Переключатель назван
+     СВОЙСТВОМ, а не действием, и граница написана словами ДО нажатия (закон №72:
+     защита, записанная словами в комментарии, защитой не является - здесь слова и есть
+     продукт, поэтому они на экране). -->
+<div id="ann" class="scr">
+  <div class="card">
+    <h2 id="annTtl"></h2>
+    <div id="annHint" class="foot" style="padding:0 0 8px"></div>
+    <div id="annKinds"></div>
+    <div id="annPage" class="foot" style="padding:6px 0 6px"></div>
+    <div id="annWrap" class="pickWrap">
+      <canvas id="annPageCv"></canvas>
+      <div id="annBox" class="pickBox"><div id="annGrip" class="pickGrip"></div></div>
+    </div>
+    <input id="annText" maxlength="300">
+    <div id="annList"></div>
+    <label id="annBurnRow"><input type="checkbox" id="annBurn"> <span id="annBurnTxt"></span></label>
+    <div id="annBurnNote" class="foot"></div>
+    <div id="annSay" style="font-size:13px; color:var(--dim); padding-top:8px"></div>
+  </div>
+</div>
+<div id="annBar" class="scrBar" hidden>
+  <button id="bAnnCancel"></button>
+  <button id="bAnnAdd" class="sm"></button>
+  <button id="bAnnGo" class="pri"></button>
+</div>
+
+<!-- «ЕЩЁ»: ПЯТЬ ОПЕРАЦИЙ, КОТОРЫЕ УМЕЛ ТОЛЬКО ЧАТ.
+     ОДИН ЭКРАН НА ПЯТЬ, А НЕ ПЯТЬ КНОПОК В ТУЛБАРЕ: ширину тулбара задаёт сообщение, и
+     десятая кнопка там ужала бы подписи до многоточий. Внутри - по строке на операцию, и у
+     каждой ровно те поля, без которых она не работает: лишнее поле это лишний вопрос
+     человеку, который хотел нажать одну кнопку.
+     ПАРОЛЬ ЗДЕСЬ ТОЛЬКО ВВОДИТСЯ. Он уезжает телом запроса (HTTPS) и дальше идёт stdin'ом
+     воркера, мимо argv и мимо логов: аргументы видны в `ps aux` любому процессу машины. -->
+<div id="mor" class="scr">
+  <div class="card">
+    <h2 id="morTtl"></h2>
+    <div id="morHint" class="foot" style="padding:0 0 10px"></div>
+
+    <div class="morRow">
+      <div id="morOcrTtl" class="morName"></div>
+      <div class="morLine">
+        <select id="morOcrLang"></select>
+        <button id="bMorOcr" class="sm"></button>
+      </div>
+      <div id="morOcrNote" class="foot"></div>
+    </div>
+
+    <div class="morRow">
+      <div id="morWmTtl" class="morName"></div>
+      <div class="morLine">
+        <input id="morWmText" type="text" maxlength="60">
+        <button id="bMorWm" class="sm"></button>
+      </div>
+      <div id="morWmNote" class="foot"></div>
+    </div>
+
+    <div class="morRow">
+      <div id="morPgTtl" class="morName"></div>
+      <div class="morLine">
+        <select id="morPgFmt"></select>
+        <select id="morPgPos"></select>
+        <button id="bMorPg" class="sm"></button>
+      </div>
+    </div>
+
+    <div class="morRow">
+      <div id="morMdTtl" class="morName"></div>
+      <div class="morLine">
+        <button id="bMorMd" class="sm"></button>
+      </div>
+      <div id="morMdNote" class="foot"></div>
+    </div>
+
+    <div class="morRow">
+      <div id="morPwTtl" class="morName"></div>
+      <div class="morLine">
+        <input id="morPw" type="password" maxlength="128" autocomplete="new-password">
+        <button id="bMorPwOn" class="sm"></button>
+        <button id="bMorPwOff" class="sm"></button>
+      </div>
+      <div id="morPwNote" class="foot"></div>
+    </div>
+
+    <div id="morSay" style="font-size:13px; color:var(--dim); padding-top:10px"></div>
+  </div>
+</div>
+<div id="morBar" class="scrBar" hidden>
+  <button id="bMorClose"></button>
+</div>
+
+<!-- ОБРЕЗКА ПОЛЕЙ. Рамка - то, что ОСТАНЕТСЯ (а у скрытия - то, что уберётся), и экран
+     говорит это словами: два экрана с похожей рамкой и противоположным смыслом человек
+     иначе перепутает. Обрезка меняет `/CropBox`, то есть ПОКАЗ, - содержимое за рамкой
+     остаётся в файле, и про это сказано здесь же, иначе человек решит, что спрятал данные
+     (для настоящего удаления есть «Скрыть данные»). -->
+<div id="crp" class="scr">
+  <div class="card">
+    <h2 id="crpTtl"></h2>
+    <div id="crpHint" class="foot" style="padding:0 0 8px"></div>
+    <div id="crpPage" class="foot" style="padding:0 0 6px"></div>
+    <div id="crpWrap" class="pickWrap">
+      <canvas id="crpPageCv"></canvas>
+      <div id="crpBox" class="pickBox"><div id="crpGrip" class="pickGrip"></div></div>
+    </div>
+    <div id="crpSay" style="font-size:13px; color:var(--dim); padding-top:8px"></div>
+  </div>
+</div>
+<div id="crpBar" class="scrBar" hidden>
+  <button id="bCrpCancel"></button>
+  <button id="bCrpReset" class="sm"></button>
+  <button id="bCrpGo" class="pri"></button>
 </div>
 
 <!-- СРАВНЕНИЕ ВЕРСИЙ. Границу сравнения человек читает ДО нажатия, а не узнаёт из
@@ -362,6 +571,46 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
   <button id="bCmpCancel"></button>
   <button id="bCmpMode" class="sm"></button>
   <button id="bCmpGo" class="pri"></button>
+</div>
+
+<!-- ПРАВКА ТЕКСТА НА ХОЛСТЕ. Экран устроен как сравнение (лист + рамки долями), но рамки
+     здесь НАЖИМАЮТСЯ, и за ними стоит не подсветка, а действие над чужим договором.
+     ТРИ РЕШЕНИЯ, КОТОРЫЕ ВИДНЫ В РАЗМЕТКЕ:
+     1. Строки берутся у ВОРКЕРА (`text_blocks`), а не из текстового слоя pdf.js: правку
+        делает PDFium, и строки он делит по-своему. Тронь человек блок pdf.js - редактор
+        не нашёл бы его текст, и человек прочитал бы «такого текста нет» на том, что
+        видит глазами (закон №41).
+     2. Результат перерисовывается ФАЙЛОМ С СЕРВЕРА (`reshow`), а не нашим представлением
+        о том, что должно было получиться (закон №52). Правка меняет вид - значит человек
+        обязан увидеть вид, а не отчёт о нём.
+     3. Про подпись сказано ДО первой правки, а не после файла: после неё она уже
+        недействительна, и предупреждать поздно (закон №32 - гейт у действия). -->
+<div id="txt" class="scr">
+  <div class="card">
+    <h2 id="txtTtl"></h2>
+    <div id="txtHint" class="foot" style="padding:0 0 8px"></div>
+    <div id="txtWarn" hidden></div>
+    <div id="txtNav" hidden>
+      <button id="bTxtPrev" class="sm"></button>
+      <span id="txtPage" style="font-size:12.5px; color:var(--dim)"></span>
+      <button id="bTxtNext" class="sm"></button>
+    </div>
+    <div id="txtWrap" hidden><canvas id="txtPageCv"></canvas></div>
+    <div id="txtCut" class="foot" style="padding:6px 0 0"></div>
+    <div id="txtEdit" hidden>
+      <div id="txtWas"></div>
+      <input id="txtInput" maxlength="400">
+      <div id="txtNote"></div>
+      <div style="display:flex; gap:8px; padding-top:8px">
+        <button class="sm" id="bTxtDrop" style="flex:1"></button>
+        <button class="sm pri" id="bTxtGo" style="flex:1"></button>
+      </div>
+    </div>
+    <div id="txtSay" style="font-size:13px; color:var(--dim); padding-top:8px"></div>
+  </div>
+</div>
+<div id="txtBar" class="scrBar" hidden>
+  <button id="bTxtCancel"></button>
 </div>
 
 <!-- ФОРМЫ. Экран один на три дела: показать найденные поля, заполнить их, а если полей нет -
@@ -462,9 +711,27 @@ const LANG = (Q.get('lang') || (tg && tg.initDataUnsafe && tg.initDataUnsafe.use
   ? 'en' : 'ru';
 const T = {
   ru: {
-    ttl: 'PDF-студия', drop: 'Перетащи сюда PDF или нажми, чтобы выбрать',
+    ttl: 'PDF-студия', drop: 'Перетащи сюда PDF или картинки (можно сразу несколько) '
+                           + 'или нажми, чтобы выбрать',
     all: 'Все', none: 'Снять', keep: 'Оставить выделенные', del: 'Удалить выделенные',
     zip: '🗜 Сжать', reset: '↩︎ Сначала', save: '⬇️ Скачать', chat: '📩 В чат',
+    mrg: '🔗 Объединить', spl: '✂️ Разделить',
+    mrgPick: 'Выбери второй PDF - его страницы встанут после текущих.',
+    mrgSend: 'Загружаю второй документ…',
+    mrgWork: 'Объединяю…',
+    mrgDone: (a, b) => 'Объединено: было ' + a + ', добавлено ' + b + '. Порядок можно '
+                     + 'менять перетаскиванием.',
+    mrgNotPdf: 'Второй файл - не PDF. Объединять можно только PDF.',
+    splOn: 'Отметь «✂», где кончается кусок. Разрез идёт по порядку, который сейчас на '
+         + 'холсте.',
+    splOff: '↩︎ Отмена разреза',
+    splGo: '✂️ Разрезать',
+    splNone: 'Ни одного разреза не отмечено - резать нечего.',
+    splParts: (n, s) => 'частей: ' + n + ' (' + s + ')',
+    splWork: 'Режу…',
+    splDone: (n) => n > 1 ? 'Готово: ' + n + ' файлов в архиве - жми «Скачать» или «В чат».'
+                          : 'Готово: один файл - жми «Скачать» или «В чат».',
+    splAgain: 'Дальнейшие правки на холсте пойдут от исходного документа, а не от куска.',
     pages: (n) => 'страниц: ' + n, sel: (n) => ', выделено ' + n,
     loading: 'Открываю документ…', sending: 'Загружаю файл…', working: 'Работаю…',
     ready: 'Готово.', gone: 'Файл забран - сессия закрыта.',
@@ -473,14 +740,26 @@ const T = {
     noApi: 'В страницу не доехал адрес бота - открой студию заново из чата.',
     noBase: 'В страницу не доехал адрес приёма файлов - открой студию заново из чата.',
     big: (m) => 'Файл больше ' + m + ' МБ - столько студия не берёт.',
-    notPdf: 'Это не PDF. Студия работает только с PDF.',
+    notPdf: 'Это не PDF и не картинка. Беру PDF, JPEG, PNG, WEBP, TIFF, GIF.',
+    manyPdf: 'Взял первый документ. Второй приклей кнопкой «Объединить» - так ты задашь '
+           + 'порядок сам.',
+    mixPick: 'Выбраны и PDF, и картинки сразу. Собери картинки в PDF отдельно, а потом '
+           + 'приклей документ кнопкой «Объединить».',
+    imgMany: (n) => 'Картинок в один PDF беру до ' + n + '.',
+    imgBig: (nm, m) => 'Картинка «' + nm + '» больше ' + m + ' МБ - столько студия не берёт.',
+    imgSend: (i, n) => 'Загружаю картинку ' + i + ' из ' + n + '…',
+    imgWork: (n) => 'Собираю PDF из ' + n + ' картинок…',
+    imgDone: (n, p) => 'Готово: из ' + n + ' картинок собрал PDF на ' + p + ' стр.',
+    imgAgain: 'Порядок страниц меняется перетаскиванием - перетащи и нажми «Применить». '
+            + 'Лист подогнан под A4, снимок в ширину лёг горизонтально.',
+    imgNoShow: 'PDF собрался, но показать его не удалось. Жми «Скачать» - файл на месте.',
     pick: 'Сначала выдели страницы.',
     keepAll: 'Выделены все страницы - удалять нечего.',
     delAll: 'Нельзя удалить все страницы: в документе должна остаться хотя бы одна.',
     sentChat: 'Отправил в чат. Можешь закрывать студию.',
-    foot: 'Объединить два документа и превратить Word в PDF пока умеет чат, а не студия: '
-        + 'первому нужен второй файл, второму - вход, который не PDF. Кнопки под '
-        + 'присланным документом на месте.',
+    foot: 'Картинки студия берёт сразу набором и собирает в один PDF; объединить и разрезать '
+        + 'умеет на холсте. Word и страницу сайта в PDF пока превращает чат - кнопки под '
+        + 'присланным файлом на месте.',
     old: 'Студия обновилась - перезагружаю…',
     oldStuck: 'Перезагрузился, а версия всё равно старая. Сам обновиться не могу - закрой '
             + 'студию и открой заново из чата.',
@@ -514,6 +793,62 @@ const T = {
     rdtDone: (n) => 'Готово. Областей убрано: ' + n + '. Скачай файл и проверь - отменить нельзя.',
     rdtShared: 'ВНИМАНИЕ: эта картинка есть на странице ещё раз, вне обведённого - там она '
              + 'осталась как была. Обведи и её, если нужно убрать везде.',
+    crp: '⬚ Обрезать поля',
+    crpTtl: '⬚ Обрезка полей',
+    crpHint: 'Внутри рамки - то, что ОСТАНЕТСЯ. Рамка применится ко всем страницам: поля у '
+           + 'сканов одинаковы, и обводить каждый лист незачем. Обрезка меняет ПОКАЗ, а не '
+           + 'удаляет текст: чтобы данные правда ушли из файла, есть «Скрыть данные».',
+    crpPage: (all) => 'Образец - первая страница. Обрежется страниц: ' + all,
+    crpReset: '↩︎ Снять обрезку',
+    crpGo: '⬚ Обрезать',
+    crpNone: 'Лист ещё не нарисован - подожди секунду и повтори.',
+    crpSmall: 'Рамка меньше 2% листа - от такой обрезки останется пустая страница.',
+    crpDone: (n, pct) => 'Обрезал страниц: ' + n + ', полей убрано около ' + pct + '%.',
+    crpNote: 'Содержимое за рамкой осталось в файле - обрезка меняет показ. Вернуть целый '
+           + 'лист: «Обрезать поля» -> «Снять обрезку».',
+    crpOff: 'Обрезку снял - показываю лист целиком.',
+    crpNoShow: 'Файл на песочнице изменён, а показать его не удалось - жми «Скачать».',
+    mor: '✨ Ещё',
+    morTtl: '✨ Ещё: распознать, знак, номера, Markdown, пароль',
+    morHint: 'Пять операций, которые раньше умел только чат. Распознавание, знак и номера '
+           + 'меняют страницы - холст перерисую сам. Markdown и пароль файл не рисуют: '
+           + 'забирай кнопкой «Скачать».',
+    morGo: 'Сделать',
+    morOcr: '🔍 Распознать текст',
+    morOcrNote: 'Страницы станут картинками с текстовым слоем под ними. Идёт минутами: '
+              + 'это движок, а не наша медлительность.',
+    morOcrWork: 'Распознаю текст на страницах…',
+    morOcrDone: (n, c) => 'Распознал страниц: ' + n + ', символов нашёл: ' + c + '.',
+    morLangBoth: 'RU+EN',
+    morWm: '💧 Водяной знак',
+    morWmHint: 'например КОПИЯ',
+    morWmNote: 'Знак НЕ защищает документ - его видно, и его можно убрать. Защита - это '
+             + 'пароль ниже.',
+    morWmNeed: 'Напиши, что написать знаком.',
+    morWmDone: (n) => 'Поставил знак на страниц: ' + n + '.',
+    morWmSafe: 'Знак виден, но не защищает: текст под ним остался текстом.',
+    morPg: '🔢 Номера страниц',
+    morPgDone: (n) => 'Пронумеровал страниц: ' + n + '.',
+    morFmtOfN: '1 из N',
+    morFmtWord: 'стр. 1',
+    morFmtWordVal: 'стр. {n}',
+    morPosBR: 'снизу справа', morPosBC: 'снизу в центре', morPosBL: 'снизу слева',
+    morPosTR: 'сверху справа', morPosTC: 'сверху в центре', morPosTL: 'сверху слева',
+    morMd: '📝 В Markdown',
+    morMdNote: 'Заголовки по размеру шрифта, таблицы таблицами. Скан без текста перевести '
+             + 'нечем - сначала распознай.',
+    morMdDone: (n, t) => 'Перевёл страниц: ' + n + ', таблиц: ' + t + '.',
+    morMdSave: 'Готов файл .md - жми «Скачать» или «В чат».',
+    morPw: '🔒 Пароль на открытие',
+    morPwHint: 'пароль',
+    morPwNote: 'Пароль уезжает только на наш приём и дальше в воркер - ни в адрес, ни в '
+             + 'журнал он не попадает. Запомни его: восстановить мы не сможем.',
+    morPwOn: '🔒 Поставить',
+    morPwOff: '🔓 Снять',
+    morPwNeed: 'Введи пароль.',
+    morPwOnDone: 'Пароль поставлен.',
+    morPwOffDone: 'Пароль снят.',
+    scrWait: 'Выбери файл - и я сразу открою тот экран, который ты нажал в чате.',
     /* ═══ ФОРМЫ ═══
        ГРАНИЦА НАЗВАНА ЧЕЛОВЕКУ ЕГО СЛОВАМИ, А НЕ НАШИМИ. «XFA» ему ничего не говорит,
        поэтому отказ объясняет, ЧТО это значит и ЧЕМ открыть; «полей не найдено» на такой
@@ -619,12 +954,89 @@ const T = {
                    + (p.changed ? ' - изменилась' : '')
                    + (p.resized ? ' (размер страницы другой)' : ''),
     cmpPxOnly: (o) => 'стр. ' + o.page + ': есть только в ' + o.where + ' версии',
+    /* ═══ ПРАВКА ТЕКСТА НА ХОЛСТЕ ═══
+       ГРАНИЦА НАЗВАНА ПЕРВОЙ СТРОКОЙ, ДО ПЕРВОГО ТАПА: правится СТРОКА ЦЕЛИКОМ и только
+       та, что воркер видит текстом. Человек, который ждал «кликнул в слово - печатаю
+       поверх», должен узнать об этом до того, как решит, что экран сломан. */
+    txt: '✏️ Править текст',
+    txtTtl: '✏️ Правка текста на листе',
+    txtHint: 'Тапни строку - и перепиши её целиком. Правится ровно та строка, которую '
+           + 'подсветили: это строки, которые редактор РЕАЛЬНО находит в файле, а не всё, '
+           + 'что видно глазами. Скана без текстового слоя это не касается - сначала '
+           + '«Распознать текст». Новый текст встаёт на место старого и ужимается или '
+           + 'растягивается под его ширину.',
+    txtWarnSig: (w) => '⚠️ ' + w,
+    txtAsk: 'Править текст подписанного документа? Подпись станет НЕДЕЙСТВИТЕЛЬНОЙ, и '
+          + 'вернуть её нельзя.',
+    txtPage: (n, all) => 'Страница ' + n + ' из ' + all,
+    txtNone: 'На этой странице редактор не нашёл ни одной строки текста. Если это скан - '
+           + 'сначала «✨ Ещё» → «Распознать текст».',
+    txtLoad: 'Ищу строки на странице…',
+    txtWas: (t) => 'Было: «' + t + '»',
+    txtDrop: 'Отмена',
+    txtGo: '✏️ Применить',
+    txtCancel: 'Закрыть',
+    txtSame: 'Текст не изменился - менять нечего.',
+    txtEmpty: 'Пустая строка сотрёт текст целиком. Если так и надо - сотри его заменой на '
+            + 'пробел, иначе напиши новый текст.',
+    txtDone: 'Готово - смотри лист. Можно править дальше или забрать файл кнопкой '
+           + '«Скачать».',
+    txtFail: 'Правка не прошла - документ не тронут.',
+    txtNoShow: 'Правка прошла, а показать лист не удалось - жми «Скачать», файл на месте.',
+    /* ═══ ПОМЕТКИ ═══
+       ГРАНИЦА ПЕРВОЙ СТРОКОЙ И СВОИМИ СЛОВАМИ. Свойство «аннотацию можно снять» человек
+       прочитает и как достоинство, и как обман - в зависимости от того, чего он ждал.
+       Поэтому оба исхода названы ДО нажатия, а не один из них после файла. */
+    ann: '🖍 Пометки',
+    annTtl: '🖍 Пометки на страницах',
+    annHint: 'Обведи место, выбери вид и нажми «+ пометка». Пометок может быть сколько '
+           + 'угодно - применятся все разом.',
+    annKindHigh: '🖍 Выделить',
+    annKindBox: '▭ Обвести',
+    annKindNote: '📝 Заметка',
+    annTextPh: 'Что написать в пометке (у заметки обязательно)',
+    annPage: (n, all) => 'Страница ' + n + ' из ' + all + ' - обведи место; угол меняет размер',
+    annList: (n) => 'Пометок: ' + n,
+    annNone: 'Ни одной пометки не добавлено - обведи место и нажми «+ пометка».',
+    annNoteEmpty: 'У заметки обязателен текст: пустой значок на странице ты потом не '
+                + 'отличишь от мусора.',
+    annAdd: '+ пометка',
+    annCancel: 'Отмена',
+    annGo: '🖍 Применить',
+    annBurn: 'Впечатать в страницы',
+    annBurnOff: 'Сейчас пометки сохранятся НАСТОЯЩИМИ аннотациями PDF: их видно в любой '
+              + 'читалке, их можно двигать и удалять, и часть читалок их НЕ ПЕЧАТАЕТ. '
+              + 'Это то, что нужно для разметки: показал юристу - снял.',
+    annBurnOn: 'Пометки станут частью страницы НАВСЕГДА: снять их нельзя ничем, '
+             + 'печатаются везде. Текст документа не изменится - они рисуются поверх, '
+             + 'но под жёлтым выделением буквы станут светлее.',
+    annDone: (n, b) => 'Готово, пометок: ' + n + (b ? '. Впечатаны навсегда.'
+                                                   : '. Это аннотации - их можно снять.'),
+    annFail: 'Пометки не поставились - документ не тронут.',
     ok: 'OK', cancel: 'Отмена', yes: 'Да', no: 'Нет',
   },
   en: {
-    ttl: 'PDF studio', drop: 'Drop a PDF here, or tap to choose one',
+    ttl: 'PDF studio', drop: 'Drop a PDF or images here (several at once is fine), '
+                           + 'or tap to choose',
     all: 'All', none: 'Clear', keep: 'Keep selected', del: 'Delete selected',
     zip: '🗜 Compress', reset: '↩︎ Start over', save: '⬇️ Download', chat: '📩 To chat',
+    mrg: '🔗 Merge', spl: '✂️ Split',
+    mrgPick: 'Pick the second PDF - its pages go after the current ones.',
+    mrgSend: 'Uploading the second document…',
+    mrgWork: 'Merging…',
+    mrgDone: (a, b) => 'Merged: ' + a + ' pages were there, ' + b + ' added. You can still '
+                     + 'reorder by dragging.',
+    mrgNotPdf: 'The second file is not a PDF. Only PDFs can be merged.',
+    splOn: 'Mark "✂" where a part ends. The cut follows the order you see on the canvas '
+         + 'right now.',
+    splOff: '↩︎ Cancel the split',
+    splGo: '✂️ Split it',
+    splNone: 'No cut marked - there is nothing to split.',
+    splParts: (n, s) => 'parts: ' + n + ' (' + s + ')',
+    splWork: 'Splitting…',
+    splDone: (n) => n > 1 ? 'Done: ' + n + ' files in a zip - tap "Download" or "To chat".'
+                          : 'Done: one file - tap "Download" or "To chat".',
+    splAgain: 'Further edits on the canvas start from the original document, not from a part.',
     pages: (n) => 'pages: ' + n, sel: (n) => ', selected ' + n,
     loading: 'Opening the document…', sending: 'Uploading…', working: 'Working…',
     ready: 'Done.', gone: 'File taken - the session is closed.',
@@ -633,14 +1045,28 @@ const T = {
     noApi: 'The bot address did not reach this page - reopen the studio from the chat.',
     noBase: 'The upload address did not reach this page - reopen the studio from the chat.',
     big: (m) => 'The file is over ' + m + ' MB - the studio does not take that much.',
-    notPdf: 'That is not a PDF. The studio only works with PDFs.',
+    notPdf: 'That is neither a PDF nor an image. I take PDF, JPEG, PNG, WEBP, TIFF, GIF.',
+    manyPdf: 'Took the first document. Attach the second one with «Merge» - that way the '
+           + 'order is yours.',
+    mixPick: 'You picked PDFs and images at once. Build the images into a PDF first, then '
+           + 'attach the document with «Merge».',
+    imgMany: (n) => 'I take up to ' + n + ' images into one PDF.',
+    imgBig: (nm, m) => 'Image «' + nm + '» is over ' + m + ' MB - the studio does not take '
+                     + 'that much.',
+    imgSend: (i, n) => 'Uploading image ' + i + ' of ' + n + '…',
+    imgWork: (n) => 'Building a PDF out of ' + n + ' images…',
+    imgDone: (n, p) => 'Done: ' + n + ' images became a ' + p + '-page PDF.',
+    imgAgain: 'Drag the pages to change their order, then press «Apply». Pages are fitted '
+            + 'to A4; a landscape shot got a landscape page.',
+    imgNoShow: 'The PDF was built, but I could not show it. Press «Download» - the file is '
+             + 'there.',
     pick: 'Select some pages first.',
     keepAll: 'Every page is selected - nothing to drop.',
     delAll: 'Cannot delete every page: at least one must remain.',
     sentChat: 'Sent to the chat. You can close the studio.',
-    foot: 'Merging two documents and turning Word into PDF still live in the chat, not '
-        + 'here: the first needs a second file, the second needs input that is not a PDF. '
-        + 'The buttons under your document are where they were.',
+    foot: 'The studio takes images as a batch and builds them into one PDF; merging and '
+        + 'splitting work right on the canvas. Word files and web pages still become PDFs '
+        + 'in the chat - the buttons under your file are where they were.',
     old: 'The studio was updated - reloading…',
     oldStuck: 'Reloaded and still on the old version. I cannot update myself - close the '
             + 'studio and open it again from the chat.',
@@ -666,6 +1092,63 @@ const T = {
     rdtDone: (n) => 'Done. Areas removed: ' + n + '. Download the file and check - this cannot be undone.',
     rdtShared: 'WARNING: this image appears on the page again, outside your selection - '
              + 'there it was left as it was. Select it too if it must go everywhere.',
+    crp: '⬚ Crop margins',
+    crpTtl: '⬚ Crop margins',
+    crpHint: 'What is INSIDE the frame stays. The frame applies to every page: margins are '
+           + 'the same across a scan, so there is no point selecting each sheet. Cropping '
+           + 'changes what is SHOWN, it does not delete text: to really remove data from '
+           + 'the file use "Hide data".',
+    crpPage: (all) => 'Preview is page one. Pages to crop: ' + all,
+    crpReset: '↩︎ Undo crop',
+    crpGo: '⬚ Crop',
+    crpNone: 'The sheet is not drawn yet - give it a second and try again.',
+    crpSmall: 'The frame is under 2% of the sheet - such a crop leaves an empty page.',
+    crpDone: (n, pct) => 'Cropped pages: ' + n + ', about ' + pct + '% of margins gone.',
+    crpNote: 'Everything outside the frame is still in the file - cropping changes the view. '
+           + 'To get the full sheet back: "Crop margins" -> "Undo crop".',
+    crpOff: 'Crop removed - showing the full sheet.',
+    crpNoShow: 'The file on the sandbox changed, but I could not show it - press "Download".',
+    mor: '✨ More',
+    morTtl: '✨ More: OCR, watermark, page numbers, Markdown, password',
+    morHint: 'Five operations that used to live in the chat only. OCR, watermark and page '
+           + 'numbers change the pages - I will redraw the canvas myself. Markdown and the '
+           + 'password do not draw a file: grab them with "Download".',
+    morGo: 'Do it',
+    morOcr: '🔍 Recognise text',
+    morOcrNote: 'Pages become images with a text layer underneath. It takes minutes: that '
+              + 'is the engine, not us being slow.',
+    morOcrWork: 'Recognising text on the pages…',
+    morOcrDone: (n, c) => 'Recognised pages: ' + n + ', characters found: ' + c + '.',
+    morLangBoth: 'RU+EN',
+    morWm: '💧 Watermark',
+    morWmHint: 'e.g. COPY',
+    morWmNote: 'A watermark does NOT protect the document - it is visible and removable. '
+             + 'Protection is the password below.',
+    morWmNeed: 'Type what the watermark should say.',
+    morWmDone: (n) => 'Watermarked pages: ' + n + '.',
+    morWmSafe: 'The mark is visible but protects nothing: the text under it is still text.',
+    morPg: '🔢 Page numbers',
+    morPgDone: (n) => 'Numbered pages: ' + n + '.',
+    morFmtOfN: '1 of N',
+    morFmtWord: 'page 1',
+    morFmtWordVal: 'p. {n}',
+    morPosBR: 'bottom right', morPosBC: 'bottom centre', morPosBL: 'bottom left',
+    morPosTR: 'top right', morPosTC: 'top centre', morPosTL: 'top left',
+    morMd: '📝 To Markdown',
+    morMdNote: 'Headings from font size, tables as tables. A scan without text cannot be '
+             + 'converted - run OCR first.',
+    morMdDone: (n, t) => 'Converted pages: ' + n + ', tables: ' + t + '.',
+    morMdSave: 'The .md file is ready - press "Download" or "To chat".',
+    morPw: '🔒 Password to open',
+    morPwHint: 'password',
+    morPwNote: 'The password goes only to our intake and then into the worker - never into '
+             + 'the URL and never into a log. Remember it: we cannot recover it.',
+    morPwOn: '🔒 Set',
+    morPwOff: '🔓 Remove',
+    morPwNeed: 'Type the password.',
+    morPwOnDone: 'Password set.',
+    morPwOffDone: 'Password removed.',
+    scrWait: 'Pick a file - and I will open the screen you tapped in the chat right away.',
     frmTtl: 'Form fields',
     frmLoading: 'Checking what fields the document has…',
     frmNone: 'This document has no fillable fields. You can CREATE them: tap "+ field", '
@@ -762,16 +1245,67 @@ const T = {
                    + (p.resized ? ' (page size differs)' : ''),
     cmpPxOnly: (o) => 'p. ' + o.page + ': present only in the '
                     + (o.where === 'первой' ? 'first' : 'second') + ' version',
+    txt: '✏️ Edit text',
+    txtTtl: '✏️ Edit text on the page',
+    txtHint: 'Tap a line and rewrite it whole. Exactly the highlighted line is edited: '
+           + 'these are the lines the editor REALLY finds in the file, not everything you '
+           + 'see. Scans without a text layer are not covered - run OCR first. The new '
+           + 'text takes the place of the old one and is squeezed or stretched to its width.',
+    txtWarnSig: (w) => '⚠️ ' + w,
+    txtAsk: 'Edit the text of a signed document? The signature will become INVALID and '
+          + 'cannot be restored.',
+    txtPage: (n, all) => 'Page ' + n + ' of ' + all,
+    txtNone: 'The editor found no text lines on this page. If this is a scan - run '
+           + '"✨ More" → "Recognise text" first.',
+    txtLoad: 'Looking for lines on the page…',
+    txtWas: (t) => 'Was: "' + t + '"',
+    txtDrop: 'Cancel',
+    txtGo: '✏️ Apply',
+    txtCancel: 'Close',
+    txtSame: 'The text is unchanged - nothing to replace.',
+    txtEmpty: 'An empty line would wipe the text completely. If that is what you want, '
+            + 'replace it with a space; otherwise type the new text.',
+    txtDone: 'Done - look at the page. You can keep editing or take the file with '
+           + '"Download".',
+    txtFail: 'The edit did not go through - the document is untouched.',
+    txtNoShow: 'The edit went through, but the page could not be shown - tap "Download", '
+             + 'the file is there.',
+    ann: '🖍 Marks',
+    annTtl: '🖍 Marks on the pages',
+    annHint: 'Draw a box, pick a kind and tap "+ mark". You can add as many as you like - '
+           + 'they all apply at once.',
+    annKindHigh: '🖍 Highlight',
+    annKindBox: '▭ Outline',
+    annKindNote: '📝 Note',
+    annTextPh: 'What the mark says (required for a note)',
+    annPage: (n, all) => 'Page ' + n + ' of ' + all + ' - draw the box; the corner resizes it',
+    annList: (n) => 'Marks: ' + n,
+    annNone: 'No marks added yet - draw a box and tap "+ mark".',
+    annNoteEmpty: 'A note needs text: an empty icon on the page is indistinguishable from '
+                + 'junk later on.',
+    annAdd: '+ mark',
+    annCancel: 'Cancel',
+    annGo: '🖍 Apply',
+    annBurn: 'Burn into the pages',
+    annBurnOff: 'Marks will be saved as REAL PDF annotations: visible in any reader, '
+              + 'movable and removable, and some readers DO NOT PRINT them. That is what '
+              + 'markup is for: show it to your lawyer, then take it off.',
+    annBurnOn: 'Marks become part of the page FOREVER: nothing can take them off and they '
+             + 'print everywhere. The document text stays as it is - they are drawn on '
+             + 'top, but letters under a yellow highlight get lighter.',
+    annDone: (n, b) => 'Done, marks: ' + n + (b ? '. Burned in for good.'
+                                                : '. These are annotations - removable.'),
+    annFail: 'The marks were not applied - the document is untouched.',
     ok: 'OK', cancel: 'Cancel', yes: 'Yes', no: 'No',
   },
 }[LANG];
 
-const VERSION = '4ff0c1bc6087';
+const VERSION = '95541a3d1a1d';
 /* АДРЕСА - ПАРАМЕТРОМ ССЫЛКИ СИЛЬНЕЕ ЗАШИТОГО ПРИ ВЫКЛАДКЕ. Причина записана в
-   publish_static.page_url и стоила полдня: `https://hara-search.laynenorstrud.workers.dev` подставляется В МОМЕНТ ДЕПЛОЯ, и
+   publish_static.page_url и стоила полдня: `https://rtc.harma.cc` подставляется В МОМЕНТ ДЕПЛОЯ, и
    если Worker тогда не был в реестре, страница остаётся без адреса НАВСЕГДА. Ссылку же
    бот собирает заново на каждый тап. */
-const API = (Q.get('api') || 'https://hara-search.laynenorstrud.workers.dev').replace(/\/+$/, '');
+const API = (Q.get('api') || 'https://rtc.harma.cc').replace(/\/+$/, '');
 const BASE = (Q.get('pdf') || '').replace(/\/+$/, '');
 const INIT = (tg && tg.initData) || '';
 
@@ -839,10 +1373,40 @@ async function pdfjsFallback() {
    песочнице. Гонять документ туда-сюда на каждый поворот значило бы платить сетью за
    то, что человек делает пальцем.
    ═══════════════════════════════════════════════════════════════════════════════ */
+/* ЯРЛЫК БОТА, ЧЬЕЙ КНОПКОЙ ОТКРЫЛИ СТУДИЮ: уезжает обратно в каждом сигнале, чтобы
+   задачу забрал ИМЕННО ЭТОТ бот, а не первый опросивший общий ящик (прод и тест ходят
+   в один). Пусто - работаем как раньше. */
+const BFP = Q.get('bfp') || '';
 let TICKET = '', SID = '', DOC = null, NAME = '', MAXMB = 100;
+/* ═══ ЭКРАН, НА КОТОРЫЙ ЧЕЛОВЕКА ПОСЛАЛИ ИЗ ЧАТА ═══
+   Кнопка под документом в чате («✍️ Подписать» и соседи) открывает студию с `screen=`.
+   Документа в сессии при этом ЕЩЁ НЕТ - файл лежит в чате, и первым делом страница просит
+   его выбрать. Поэтому экран открывается не при загрузке страницы, а СРАЗУ ПОСЛЕ того,
+   как документ нарисован, и ровно один раз: иначе человек, закрывший экран, получал бы
+   его обратно после каждой правки холста. */
+let WANT_SCREEN = '';
+/* РЕЕСТР ИМЁН ЭКРАНОВ, А НЕ ВЕТКИ ПО СТРОКЕ: имя приезжает из чата (`pdf_ui._STUDIO_SCREENS`),
+   и список здесь - единственное место, где решается, что такое имя значит. Новый экран =
+   новая строка, а не новая развилка. */
+const SCREENS = {
+  sign: () => sigOpen(),
+  form: () => frmOpen(),
+  rdt: () => rdtOpen(),
+  cmp: () => cmpOpen(),
+  crp: () => crpOpen(),
+  mor: () => morOpen(),
+  txt: () => txtOpen(),
+  ann: () => annOpen(),
+};
+/* СКОЛЬКО КАРТИНОК БЕРЁМ В ОДИН PDF. Число названо и здесь, и у приёма: страница обязана
+   отказать РАНЬШЕ отправки шестидесяти первого файла, иначе человек узнает о потолке
+   после того, как всё уехало. Правду считает приём, здесь - то же число для отказа. */
+const MAXIMG = 60;
 let PAGES = [];          // [{src:<номер в исходнике, с 1>, rot:<0|90|180|270>, sel:bool}]
 let DIRTY = false;       // есть ли несохранённые намерения
 let THUMBS = new Map();  // src -> canvas (рисуем один раз, перестановка их не меняет)
+let SPL = { on: false, cuts: new Set() };  // разрез: после каких позиций холста резать
+let MRG_WAIT = false;    // кто ждёт файл из общего ввода: объединение (true) или сравнение
 
 const req = async (path, opt) => {
   const o = opt || {};
@@ -865,6 +1429,100 @@ async function ticket() {
   return TICKET;
 }
 const u = (p) => BASE + p + '?ticket=' + encodeURIComponent(TICKET);
+
+/* ═══ ЧТО ВЫБРАЛ ЧЕЛОВЕК - РЕШАЕТ ОДНО МЕСТО ═══
+   Вводов у выбора файла два (кнопка и перетаскивание), а решение «это PDF или набор
+   картинок» должно быть ОДНО: вторая копия разошлась бы на первом же формате, и
+   перетаскивание принимало бы то, чего не принимает кнопка (закон №40). */
+const IMG_RX = /\.(jpe?g|png|webp|tiff?|gif)$/i;
+
+function isImg(f) {
+  return IMG_RX.test(f.name || '') || /^image\//.test(f.type || '');
+}
+
+async function pick(list) {
+  const files = [...(list || [])];
+  if (!files.length) return;
+  const карт = files.filter(isImg);
+  if (карт.length === files.length) return uploadImages(карт);
+  if (!карт.length) {
+    if (!/\.pdf$/i.test(files[0].name || '')
+        && (files[0].type || '') !== 'application/pdf') { say(T.notPdf, 'bad'); return; }
+    /* НЕСКОЛЬКО PDF СРАЗУ НЕ СКЛЕИВАЕМ МОЛЧА: порядок склейки - решение человека, а
+       «взял первый и промолчал» он заметил бы только по пропавшему документу. */
+    if (files.length > 1) note(T.manyPdf);
+    return upload(files[0]);
+  }
+  /* СМЕСЬ НЕ УГАДЫВАЕМ. «Собрать картинки и приклеить к ним PDF» - это два разных
+     замысла, и выбирать за человека тут нечего (закон №36: причина названа). */
+  say(T.mixPick, 'bad');
+}
+
+/* ── картинки -> один PDF ──────────────────────────────────────────────────────── */
+async function uploadImages(files) {
+  const off = whyOff();
+  if (off) { say(off, 'bad'); return; }
+  if (files.length > MAXIMG) { say(T.imgMany(MAXIMG), 'bad'); return; }
+  for (const f of files) {
+    if (f.size > MAXMB * 1048576) { say(T.imgBig(f.name, MAXMB), 'bad'); return; }
+  }
+  try {
+    await ticket();
+    /* ПО ОДНОЙ КАРТИНКЕ ЗА ЗАПРОС, И НОМЕР ЕДЕТ ЯВНО: приём сверяет, что номер идёт
+       следующим по счёту, поэтому потерянный запрос становится ОТКАЗОМ, а не страницей,
+       которая молча заняла чужое место (закон №41). И человек всё это время видит счёт -
+       двадцать снимков с телефона едут не мгновенно (закон №46). */
+    for (let i = 0; i < files.length; i++) {
+      say(T.imgSend(i + 1, files.length));
+      const r = await fetch(u('/pdf/images') + '&i=' + (i + 1), {
+        method: 'POST', body: files[i],
+        headers: { 'X-Pdf-Name': encodeURIComponent(files[i].name || ('img' + (i + 1))) },
+      });
+      const j = await r.json().catch(() => null);
+      if (!r.ok || !j || !j.ok) {
+        say((j && (j.human || j.error)) || ('HTTP ' + r.status), 'bad');
+        return;
+      }
+    }
+    say(T.imgWork(files.length));
+    const r = await fetch(u('/pdf/op'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ op: 'from_images' }),
+    });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || !j || !j.ok) {
+      say((j && (j.human || j.error)) || ('HTTP ' + r.status), 'bad');
+      return;
+    }
+    NAME = j.name || 'картинки.pdf';
+    /* СОБРАННЫЙ ДОКУМЕНТ ЗАБИРАЕМ С ПЕСОЧНИЦЫ, А НЕ СОБИРАЕМ ВТОРОЙ РАЗ В БРАУЗЕРЕ:
+       показывать человеку свою версию того, что «должно было получиться», значит однажды
+       показать не то, что лежит в файле (закон №52 - правду проверяем на выходе).
+       ДВЕРЬ ИМЕННО ПОКАЗА (`/pdf/source`), А НЕ ВЫДАЧИ: `/pdf/result` отдаёт файл и
+       ЗАКРЫВАЕТ сессию - «человек забрал, работа кончена». Через неё холст показывал
+       собранный PDF, а следующая же правка отвечала «сессия истекла» (живой прогон
+       12.10). */
+    if (!(await reshow())) { say(T.imgNoShow, 'bad'); return; }
+    say(T.imgDone(files.length, j.pages || PAGES.length), 'ok');
+    note(T.imgAgain);
+  } catch (e) {
+    say(String(e && e.message || e), 'bad');
+  }
+}
+
+/* ═══ ПЕРЕРИСОВАТЬ ХОЛСТ ТЕМ, ЧТО В СЕССИИ СЕЙЧАС ═══
+   ЖИВОЙ ОТКАЗ 14.10 (нашёл прогон обрезки): визуальная операция меняет документ на
+   песочнице, а холст продолжал показывать прежний - человек жал «Обрезать», получал
+   «готово» и видел НЕОБРЕЗАННЫЕ страницы. Для операции, смысл которой «посмотри, как
+   стало», это и есть «не сработало» (закон №23: ответ синхронен исходу).
+   ДВЕРЬ ПОКАЗА, А НЕ ВЫДАЧИ: `/pdf/result` отдаёт файл и ЗАКРЫВАЕТ сессию. */
+async function reshow() {
+  const r = await fetch(u('/pdf/source'));
+  if (!r.ok) return false;
+  const buf = await r.arrayBuffer();
+  await render(buf);
+  return true;
+}
 
 /* ── загрузка файла ────────────────────────────────────────────────────────────── */
 async function upload(f) {
@@ -921,17 +1579,42 @@ async function renderWith(buf) {
   DOC = await pdfjs.getDocument({ data: new Uint8Array(buf) }).promise;
   PAGES = [];
   for (let i = 1; i <= DOC.numPages; i++) PAGES.push({ src: i, rot: 0, sel: false });
+  DOCS = [{ doc: DOC, from: 1 }];
+  SPL.cuts.clear(); SPL.on = false;
   THUMBS.clear();
   DIRTY = false;
   $('drop').hidden = true;
   $('tools').hidden = false;
   $('bar').hidden = false;
   await paint();
+  /* ЭКРАН ИЗ ЧАТА ОТКРЫВАЕМ ЗДЕСЬ: документ нарисован, значит экрану есть что показывать.
+     Сбрасываем имя сразу - один раз, а не на каждую перерисовку холста. */
+  if (WANT_SCREEN && SCREENS[WANT_SCREEN]) {
+    const _fn = SCREENS[WANT_SCREEN];
+    WANT_SCREEN = '';
+    note('');
+    await _fn();
+  }
+}
+
+/* ═══ ХОЛСТ УМЕЕТ НЕСКОЛЬКО ДОКУМЕНТОВ, И ЭТО ТРЕБОВАНИЕ ОБЪЕДИНЕНИЯ ═══
+   Номер `src` у страницы - это номер В ДОКУМЕНТЕ НА ПЕСОЧНИЦЕ, и после объединения он
+   продолжается во втором файле. Рисовать его при этом надо из второго pdf.js-документа:
+   спроси мы страницу 7 у первого (у которого их четыре), pdf.js отдал бы отказ, а холст
+   показал бы пустые карточки - то есть «объединил» выглядело бы как поломка. */
+let DOCS = [];           // [{doc, from}] - исходник и приклеенные объединением, по порядку
+
+function docFor(src) {
+  for (let i = DOCS.length - 1; i >= 0; i--) {
+    if (src >= DOCS[i].from) return { doc: DOCS[i].doc, n: src - DOCS[i].from + 1 };
+  }
+  return { doc: DOC, n: src };
 }
 
 async function thumb(src) {
   if (THUMBS.has(src)) return THUMBS.get(src);
-  const page = await DOC.getPage(src);
+  const d = docFor(src);
+  const page = await d.doc.getPage(d.n);
   const vp = page.getViewport({ scale: 1 });
   const scale = Math.min(1.4, 190 / vp.width);
   const v = page.getViewport({ scale: scale });
@@ -966,18 +1649,141 @@ async function paint() {
     x.className = 'x'; x.textContent = '✕'; x.title = T.del;
     x.onclick = (ev) => { ev.stopPropagation(); dropPage(i); };
     d.appendChild(x);
+    /* МЕТКА РАЗРЕЗА - ТОЛЬКО В РЕЖИМЕ РАЗРЕЗА И НЕ ПОСЛЕ ПОСЛЕДНЕЙ СТРАНИЦЫ: «разрез
+       после последней» не даёт второго куска, то есть это кнопка, которая ничего не
+       делает (закон №36 - кнопка либо работает, либо называет причину). */
+    if (SPL.on && i < PAGES.length - 1) {
+      const cut = document.createElement('button');
+      const on = SPL.cuts.has(i + 1);
+      cut.className = 'cut' + (on ? ' on' : '');
+      cut.textContent = '✂';
+      cut.onclick = (ev) => { ev.stopPropagation(); splToggle(i + 1); };
+      d.appendChild(cut);
+      if (on) d.classList.add('cutAfter');
+    }
     d.onclick = () => { p.sel = !p.sel; paint(); };
     g.appendChild(d);
   }
   const nsel = PAGES.filter((p) => p.sel).length;
+  const parts = SPL.on ? splRanges() : [];
   $('sub').textContent = (NAME ? NAME + ' · ' : '') + T.pages(PAGES.length)
-                       + (nsel ? T.sel(nsel) : '');
+                       + (nsel ? T.sel(nsel) : '')
+                       + (parts.length > 1 ? ' · ' + T.splParts(parts.length,
+                                                                parts.join(', ')) : '');
   wireDrag();
 }
 
 function dropPage(i) {
   if (PAGES.length <= 1) { say(T.delAll, 'bad'); return; }
   PAGES.splice(i, 1); DIRTY = true; say(''); paint();
+}
+
+/* ═══ ВТОРОЙ ДОКУМЕНТ СЕССИИ - ОДНА ДВЕРЬ НА ДВУХ ПОТРЕБИТЕЛЕЙ ═══
+   `/pdf/second` кладёт в сессию `cmp.pdf`, и забирают его двое: сравнение версий и
+   объединение. Вторая копия этой отправки разошлась бы с первой на заголовке имени или на
+   разборе отказа - и человек увидел бы это как «объединение не работает» (закон №40). */
+async function sendSecond(f, buf) {
+  const r = await fetch(u('/pdf/second'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/pdf',
+               'X-Pdf-Name': encodeURIComponent(f.name || 'second.pdf') },
+    body: buf,
+  });
+  const j = await r.json().catch(() => null);
+  if (!r.ok || !j || !j.ok) {
+    return { ok: false, why: (j && (j.human || j.error)) || ('HTTP ' + r.status) };
+  }
+  return { ok: true, pages: j.pages || 0 };
+}
+
+/* ═══ РАЗРЕЗ: ЧИСЛА СЧИТАЕТ ОДНА ФУНКЦИЯ ═══
+   Диапазоны нужны дважды - показать человеку в сводке и отправить воркеру, - и считать их
+   двумя местами значило бы однажды показать одно, а отрезать другое. */
+function splRanges() {
+  const cuts = [...SPL.cuts].filter((c) => c >= 1 && c < PAGES.length).sort((a, b) => a - b);
+  const out = [];
+  let from = 1;
+  for (const c of cuts) { out.push(from + '-' + c); from = c + 1; }
+  out.push(from + '-' + PAGES.length);
+  return out;
+}
+
+function splToggle(after) {
+  if (SPL.cuts.has(after)) SPL.cuts.delete(after); else SPL.cuts.add(after);
+  say('');
+  paint();
+}
+
+/* ОБРАТНЫЙ ПУТЬ У РЕЖИМА ЕСТЬ И ОН ПРОВЕРЕН (закон №55): выход из разреза снимает метки,
+   иначе следующее «Скачать» отрезало бы по забытым отметкам прошлого замысла. */
+function splMode(on) {
+  SPL.on = !!on;
+  if (!on) SPL.cuts.clear();
+  $('bSpl').textContent = on ? T.splOff : T.spl;
+  $('bSplGo').hidden = !on;
+  say(on ? T.splOn : '');
+  paint();
+}
+
+async function splGo() {
+  const off = whyOff();
+  if (off) { say(off, 'bad'); return; }
+  const ranges = splRanges();
+  if (ranges.length < 2) { say(T.splNone, 'bad'); return; }
+  say(T.splWork);
+  if (!(await apply({ op: 'split', ranges: ranges.join(',') }))) return;
+  const made = (LAST_RES && LAST_RES.made) || ranges.length;
+  /* РЕЗУЛЬТАТ РАЗРЕЗА - АРХИВ, И СКАЗАТЬ ОБ ЭТОМ НАДО СЛОВАМИ: холст после него
+     показывает по-прежнему ЦЕЛЫЙ документ, потому что куски лежат одним файлом на
+     песочнице. Молчание здесь читалось бы как «ничего не произошло» (закон №23). */
+  splMode(false);
+  say(T.splDone(made), 'ok');
+  note(T.splAgain);
+}
+
+/* ═══ ОБЪЕДИНЕНИЕ МЕНЯЕТ ИСХОДНИК СЕССИИ, И ХОЛСТ ОБЯЗАН СТАТЬ ТАКИМ ЖЕ ═══
+   На песочнице `merge` заменяет `src.pdf` объединённым документом (иначе первое же
+   движение страницы вернуло бы документ к одному файлу - `pages` всегда перечитывает
+   исходник). Значит и здесь страницы второго файла ДОПИСЫВАЮТСЯ в холст, а их номера
+   продолжают нумерацию первого: номер на холсте и номер на диске - одно и то же число,
+   иначе «оставить выделенные» отрезало бы не то, что видно. */
+async function mrgGo(f) {
+  if (!f) return;
+  if (!DOC) return;
+  const off = whyOff();
+  if (off) { say(off, 'bad'); return; }
+  if (!/\.pdf$/i.test(f.name || '') && f.type && f.type !== 'application/pdf') {
+    say(T.mrgNotPdf, 'bad'); return;
+  }
+  if (!pdfjs) { say(T.cmpNoPdfjs, 'bad'); return; }
+  say(T.mrgSend);
+  try {
+    const buf = await f.arrayBuffer();
+    /* ВТОРОЙ ЛИСТ ОТКРЫВАЕМ ДО ОТПРАВКИ: битый файл честнее назвать здесь, чем после
+       ожидания объединения на песочнице. */
+    const doc2 = await pdfjs.getDocument({ data: new Uint8Array(buf.slice(0)) }).promise;
+    const sent = await sendSecond(f, buf);
+    if (!sent.ok) { say(sent.why, 'bad'); return; }
+    say(T.mrgWork);
+    const r = await fetch(u('/pdf/op'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ op: 'merge' }),
+    });
+    const j = await r.json().catch(() => null);
+    if (!r.ok || !j || !j.ok) {
+      say((j && (j.human || j.error)) || ('HTTP ' + r.status), 'bad'); return;
+    }
+    const was = (j.res && j.res.pages_first) || DOCS.reduce(
+      (n, d) => Math.max(n, d.from - 1 + d.doc.numPages), 0);
+    const add = (j.res && j.res.pages_second) || doc2.numPages;
+    DOCS.push({ doc: doc2, from: was + 1 });
+    for (let i = 1; i <= add; i++) PAGES.push({ src: was + i, rot: 0, sel: false });
+    DIRTY = true;
+    await paint();
+    say(T.mrgDone(was, add), 'ok');
+  } catch (e) {
+    say(T.cmpBadFile + ' ' + String((e && e.message) || e), 'bad');
+  }
 }
 
 /* ═══ ПЕРЕТАСКИВАНИЕ НА POINTER EVENTS, А НЕ НА HTML5 DRAG ═══
@@ -989,7 +1795,14 @@ function wireDrag() {
   const cards = [...document.querySelectorAll('.pg')];
   cards.forEach((el) => {
     el.onpointerdown = (e) => {
-      if (e.target.classList.contains('x')) return;
+      /* ЛЮБАЯ КНОПКА НА КАРТОЧКЕ ПЕРЕТАСКИВАНИЮ НЕ ОТДАЁТСЯ - И ЭТО ПРАВИЛО, А НЕ СПИСОК
+         ИМЁН. `setPointerCapture` на карточке переводит на неё и последующий `click`,
+         поэтому нажатие по кнопке внутри приезжает КАРТОЧКЕ: `stopPropagation` у самой
+         кнопки не спасает - её обработчик не зовётся вовсе. Раньше здесь стояло имя
+         одного класса (`x`), и новая кнопка «✂» молча перестала работать: тап по метке
+         разреза ВЫДЕЛЯЛ страницу. Нашёл браузерный прибор (закон №75), по данным этого
+         не видно - разметка, размеры и обработчик были на месте. */
+      if (e.target.closest && e.target.closest('button')) return;
       from = +el.dataset.i;
       ghost = el;
       el.setPointerCapture(e.pointerId);
@@ -1111,7 +1924,8 @@ async function toChat() {
   if (!(await apply(null))) return;
   const r = await req(API + '/signal', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ kind: 'pdf', sid: SID }),
+    body: JSON.stringify(Object.assign({ kind: 'pdf', sid: SID },
+                                       BFP ? { bot: BFP } : {})),
   });
   if (r.status !== 200) { say('не отправилось: HTTP ' + r.status, 'bad'); return; }
   say(T.sentChat, 'ok');
@@ -1201,7 +2015,9 @@ function askYesNo(title) {
 async function signalAsk(body, tries) {
   const r = await req(API + '/signal', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    /* ЯРЛЫК ДОПИСЫВАЕТСЯ ЗДЕСЬ, А НЕ У КАЖДОГО ВЫЗЫВАЮЩЕГО: забыть его в одном из
+       мест значило бы получить задачу, уехавшую не тому боту (закон №40). */
+    body: JSON.stringify(Object.assign({}, body, BFP ? { bot: BFP } : {})),
   });
   if (r.status !== 200 || !r.j || !r.j.id) return { why: 'HTTP ' + r.status };
   const id = r.j.id;
@@ -1472,18 +2288,7 @@ async function rdtOpen() {
 }
 
 async function rdtPaintPage() {
-  const p = PAGES[RDT.page];
-  const cv = $('rdtPageCv');
-  const page = await DOC.getPage(p.src);
-  /* ПОВОРОТ УЧТЁН ТАК ЖЕ, КАК У ПОДПИСИ И ПОЛЕЙ: человек обводит то, что ВИДИТ, доли
-     считаются от видимого кадра, а воркер переводит их в систему страницы сам. */
-  const v0 = page.getViewport({ scale: 1, rotation: (page.rotate + p.rot) % 360 });
-  const wide = Math.min(520, (window.innerWidth || 360) - 56);
-  const sc = wide / v0.width;
-  const v = page.getViewport({ scale: sc, rotation: (page.rotate + p.rot) % 360 });
-  cv.width = Math.ceil(v.width); cv.height = Math.ceil(v.height);
-  cv.style.width = Math.ceil(v.width) + 'px';
-  await page.render({ canvasContext: cv.getContext('2d'), viewport: v }).promise;
+  const cv = await paintSheet('rdtPageCv', RDT.page);
   $('rdtPage').textContent = T.rdtPage(RDT.page + 1, PAGES.length);
   const box = $('rdtBox');
   box.style.width = Math.round(cv.clientWidth * 0.4) + 'px';
@@ -1520,8 +2325,12 @@ function rdtPaintList() {
   box.appendChild(head);
 }
 
-function rdtWireBox() {
-  const cv = $('rdtPageCv'), box = $('rdtBox'), grip = $('rdtGrip');
+/* ═══ ПРОВОДКА РАМКИ - ОДНА ДВЕРЬ НА ВСЕ ЭКРАНЫ, КОТОРЫЕ ЧТО-ТО ОБВОДЯТ ═══
+   Экранов с рамкой два (скрытие данных и обрезка полей), и вторая копия этой механики -
+   перетаскивание, ресайз ручкой, удержание внутри листа - разошлась бы с первой на первой
+   же правке: pointer-события, захват указателя и `clamp` здесь выведены живым прогоном
+   (закон №40). Элементы приходят параметрами, состояние живёт на самой рамке. */
+function wireBox(cv, box, grip) {
   if (box.dataset.wired) return;
   box.dataset.wired = '1';
   let mode = '', sx = 0, sy = 0, bx = 0, by = 0, bw = 0, bh = 0;
@@ -1558,16 +2367,43 @@ function rdtWireBox() {
   box.onpointercancel = grip.onpointercancel = up;
 }
 
-function rdtAdd() {
-  const cv = $('rdtPageCv'), box = $('rdtBox');
-  if (!cv.clientWidth) return;
-  RDT.areas.push({
-    page: PAGES[RDT.page].src,
+function rdtWireBox() {
+  wireBox($('rdtPageCv'), $('rdtBox'), $('rdtGrip'));
+}
+
+/* ДОЛИ РАМКИ СЧИТАЕТ ОДНО МЕСТО: экранный размер канваса - единственная правда о том,
+   что человек видел, и два места считали бы её по-разному ровно до первой правки. */
+function boxFractions(cv, box) {
+  if (!cv.clientWidth || !cv.clientHeight) return null;
+  return {
     nx: +(box.offsetLeft / cv.clientWidth).toFixed(4),
     ny: +(box.offsetTop / cv.clientHeight).toFixed(4),
     nw: +(box.offsetWidth / cv.clientWidth).toFixed(4),
     nh: +(box.offsetHeight / cv.clientHeight).toFixed(4),
-  });
+  };
+}
+
+/* ЛИСТ В КАНВАС ЭКРАНА - ТОЖЕ ОДНА ДВЕРЬ: поворот учитывается так же, как у подписи и
+   полей (человек обводит то, что ВИДИТ), и расхождение здесь увело бы рамку на
+   повёрнутой странице. */
+async function paintSheet(cvId, idx) {
+  const p = PAGES[idx];
+  const cv = $(cvId);
+  const page = await DOC.getPage(p.src);
+  const v0 = page.getViewport({ scale: 1, rotation: (page.rotate + p.rot) % 360 });
+  const wide = Math.min(520, (window.innerWidth || 360) - 56);
+  const sc = wide / v0.width;
+  const v = page.getViewport({ scale: sc, rotation: (page.rotate + p.rot) % 360 });
+  cv.width = Math.ceil(v.width); cv.height = Math.ceil(v.height);
+  cv.style.width = Math.ceil(v.width) + 'px';
+  await page.render({ canvasContext: cv.getContext('2d'), viewport: v }).promise;
+  return cv;
+}
+
+function rdtAdd() {
+  const доли = boxFractions($('rdtPageCv'), $('rdtBox'));
+  if (!доли) return;
+  RDT.areas.push(Object.assign({ page: PAGES[RDT.page].src }, доли));
   rdtPaintList();
   rdtPaintDone();
   rdtSay(T.rdtList(RDT.areas.length));
@@ -1586,6 +2422,389 @@ async function rdtGo() {
      предупреждение по дороге нельзя - человек думает, что убрал лицо, а оно видно рядом. */
   const shared = (LAST_RES && LAST_RES.shared_images || []).length;
   say(T.rdtDone(n) + (shared ? ' ' + T.rdtShared : ''), 'ok');
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ПОМЕТКИ: ОБВЁЛ - ВЫБРАЛ ВИД - НАПИСАЛ - ПРИМЕНИЛ
+   ═══════════════════════════════════════════════════════════════════════════════
+   ЭКРАН ТОТ ЖЕ ПО ЯЗЫКУ, ЧТО У СКРЫТИЯ ДАННЫХ (рамка + список + «Применить»), и это не
+   копипаста: человек уже знает этот язык, и учить его второму ради того же дела -
+   плата без причины. Механика рамки взята ОДНОЙ ДВЕРЬЮ `wireBox`/`boxFractions`
+   (закон №40), своей копии здесь нет.
+
+   ОТЛИЧИЕ ОДНО И ОНО НЕСУЩЕЕ: У ИСХОДА ДВЕ ФОРМЫ. По умолчанию пометки остаются
+   НАСТОЯЩИМИ аннотациями PDF - подвижными и снимаемыми. Это и есть то, чего ждут от
+   пометок: разметил чужой договор, показал юристу, снял. «Впечатать» делает их частью
+   страницы навсегда. Оба свойства названы человеку СЛОВАМИ И ДО НАЖАТИЯ, причём
+   переключатель объясняет ТЕКУЩЕЕ состояние, а не то, в которое перейдёт: подпись «сейчас
+   будет так» читается однозначно, а «сделать так» - в обе стороны (тот же урок, что у
+   переключателя мерки в сравнении). */
+let ANN = { marks: [], page: 0, kind: 'high' };
+
+const annSay = (t, cls) => {
+  const e = $('annSay');
+  e.textContent = t || '';
+  e.style.color = cls === 'bad' ? 'var(--bad)' : (cls === 'ok' ? 'var(--ok)' : 'var(--dim)');
+};
+
+function annClose() {
+  $('ann').classList.remove('on');
+  $('annBar').hidden = true;
+}
+
+async function annOpen() {
+  if (!DOC) return;
+  const off = whyOff();
+  if (off) { say(off, 'bad'); return; }
+  ANN = { marks: [], page: 0, kind: 'high' };
+  const sel = PAGES.map((p, i) => p.sel ? i : -1).filter((i) => i >= 0);
+  ANN.page = sel.length ? sel[0] : 0;
+  $('annTtl').textContent = T.annTtl;
+  $('annHint').textContent = T.annHint;
+  $('bAnnCancel').textContent = T.annCancel;
+  $('bAnnAdd').textContent = T.annAdd;
+  $('bAnnGo').textContent = T.annGo;
+  $('annBurnTxt').textContent = T.annBurn;
+  $('annText').placeholder = T.annTextPh;
+  $('annText').value = '';
+  $('annBurn').checked = false;
+  annPaintKinds();
+  annBurnNote();
+  $('ann').classList.add('on');
+  $('annBar').hidden = false;
+  annSay('');
+  annPaintList();
+  await annPaintPage();
+}
+
+/* ВИД ВЫБИРАЕТСЯ ДО ОБВОДКИ И ВИДЕН НА РАМКЕ ЦВЕТОМ: выбирать вслепую и узнавать
+   результат из скачанного файла - это ровно то, что закон №75 запрещает. */
+function annPaintKinds() {
+  const box = $('annKinds');
+  box.innerHTML = '';
+  for (const [k, t] of [['high', T.annKindHigh], ['box', T.annKindBox],
+                        ['note', T.annKindNote]]) {
+    const b = document.createElement('button');
+    b.className = 'sm' + (ANN.kind === k ? ' on' : '');
+    b.textContent = t;
+    b.onclick = () => { ANN.kind = k; annPaintKinds(); };
+    box.appendChild(b);
+  }
+  $('ann').classList.toggle('box', ANN.kind === 'box');
+}
+
+function annBurnNote() {
+  $('annBurnNote').textContent = $('annBurn').checked ? T.annBurnOn : T.annBurnOff;
+}
+
+async function annPaintPage() {
+  const cv = await paintSheet('annPageCv', ANN.page);
+  $('annPage').textContent = T.annPage(ANN.page + 1, PAGES.length);
+  const box = $('annBox');
+  box.style.width = Math.round(cv.clientWidth * 0.4) + 'px';
+  box.style.height = Math.round(cv.clientHeight * 0.05) + 'px';
+  box.style.left = Math.round(cv.clientWidth * 0.1) + 'px';
+  box.style.top = Math.round(cv.clientHeight * 0.1) + 'px';
+  wireBox(cv, box, $('annGrip'));
+  annPaintDone();
+}
+
+function annPaintDone() {
+  const wrap = $('annWrap'), cv = $('annPageCv');
+  for (const el of [...wrap.querySelectorAll('.annDone')]) el.remove();
+  for (const m of ANN.marks) {
+    if (m.page !== PAGES[ANN.page].src) continue;
+    const d = document.createElement('div');
+    d.className = 'annDone ' + m.kind;
+    d.style.left = (m.nx * cv.clientWidth) + 'px';
+    d.style.top = (m.ny * cv.clientHeight) + 'px';
+    d.style.width = (m.nw * cv.clientWidth) + 'px';
+    d.style.height = (m.nh * cv.clientHeight) + 'px';
+    wrap.appendChild(d);
+  }
+}
+
+function annPaintList() {
+  const box = $('annList');
+  box.innerHTML = '';
+  if (!ANN.marks.length) return;
+  const head = document.createElement('div');
+  head.textContent = T.annList(ANN.marks.length);
+  box.appendChild(head);
+}
+
+function annAdd() {
+  const доли = boxFractions($('annPageCv'), $('annBox'));
+  if (!доли) return;
+  const текст = ($('annText').value || '').trim();
+  /* ═══ ГЕЙТ СТОИТ У ДОБАВЛЕНИЯ, А НЕ У «ПРИМЕНИТЬ» (закон №32) ═══
+     Пустую заметку воркер и так отвергнет, но отвергнет он ВЕСЬ пакет - человек потеряет
+     десять правильных пометок из-за одной. */
+  if (ANN.kind === 'note' && !текст) { annSay(T.annNoteEmpty, 'bad'); return; }
+  ANN.marks.push(Object.assign({ page: PAGES[ANN.page].src, kind: ANN.kind, text: текст },
+                               доли));
+  $('annText').value = '';
+  annPaintList();
+  annPaintDone();
+  annSay(T.annList(ANN.marks.length));
+}
+
+async function annGo() {
+  const off = whyOff();
+  if (off) { annSay(off, 'bad'); return; }
+  if (!ANN.marks.length) { annSay(T.annNone, 'bad'); return; }
+  annSay(T.working);
+  const n = ANN.marks.length;
+  const впечатать = $('annBurn').checked;
+  const ok = await apply(Object.assign(
+    { op: 'annotate', marks: JSON.stringify(ANN.marks) },
+    впечатать ? { burn: '1' } : {}));
+  if (!ok) { annSay($('say').textContent || T.annFail, 'bad'); return; }
+  /* ХОЛСТ ПЕРЕРИСОВЫВАЕМ: пометка - операция ВИДА, и «готово» без листа для неё и есть
+     «не сработало» (закон №23). У аннотаций это к тому же единственный способ увидеть,
+     что читалка их вообще показывает. */
+  await reshow();
+  annClose();
+  /* СЛОВА ВОРКЕРА ДОВОЗИМ ЦЕЛИКОМ: границу («их можно снять» / «снять нельзя ничем»)
+     он знает точнее нашего пересказа, и терять её по дороге нельзя - человек решит, что
+     пометки вшиты (закон №41). */
+  const его = (LAST_RES && LAST_RES.note) || '';
+  say(T.annDone(n, впечатать) + (его ? ' ' + его : ''), 'ok');
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   «ЕЩЁ»: ПЯТЬ ОПЕРАЦИЙ, КОТОРЫЕ УМЕЛ ТОЛЬКО ЧАТ (пункт 4 ТЗ 14.10)
+   ═══════════════════════════════════════════════════════════════════════════════
+   ЦЕЛЬ ФОРМУЛИРОВАЛАСЬ ТАК: «студия умеет всё, что умеет чат, плюс визуальное». Воркер
+   эти пять умел с самого начала - не хватало экранов и строки в белом списке приёма.
+
+   ЧТО ПРОИСХОДИТ С ХОЛСТОМ ПОСЛЕ КАЖДОЙ - РЕШАЕТСЯ ПО СМЫСЛУ, А НЕ ОДНИМ ПРАВИЛОМ:
+     · распознавание, знак и номера МЕНЯЮТ ВИД страниц -> холст перерисовываем (`reshow`),
+       иначе человек видит прежний лист и слово «готово» (закон №23);
+     · Markdown отдаёт .md - рисовать его pdf.js нечем, поэтому только слова и «Скачать»;
+     · пароль ШИФРУЕТ документ: pdf.js открыть его без пароля не может ПО ПОСТРОЕНИЮ, и
+       попытка перерисовать холст закончилась бы отказом на исправной операции. Поэтому
+       здесь тоже слова - и прямо сказано, что документ дальше не правится.
+
+   ПАРОЛЬ НЕ ПИШЕТСЯ НИКУДА: он уезжает телом запроса (HTTPS), приём передаёт его воркеру
+   stdin'ом (мимо argv, который видно в `ps aux`), а поле ввода чистится сразу после
+   отправки - иначе он остался бы в DOM до закрытия вкладки. */
+let MOR_BUSY = false;
+
+function morSay(t, cls) {
+  const e = $('morSay');
+  e.textContent = t || '';
+  e.style.color = cls === 'bad' ? 'var(--bad)' : (cls === 'ok' ? 'var(--ok)' : 'var(--dim)');
+}
+
+function morClose() {
+  $('mor').classList.remove('on');
+  $('morBar').hidden = true;
+}
+
+function morOpen() {
+  if (!DOC) return;
+  const off = whyOff();
+  if (off) { say(off, 'bad'); return; }
+  $('morTtl').textContent = T.morTtl;
+  $('morHint').textContent = T.morHint;
+  $('morOcrTtl').textContent = T.morOcr;
+  $('morOcrNote').textContent = T.morOcrNote;
+  $('morWmTtl').textContent = T.morWm;
+  $('morWmNote').textContent = T.morWmNote;
+  $('morWmText').placeholder = T.morWmHint;
+  $('morPgTtl').textContent = T.morPg;
+  $('morMdTtl').textContent = T.morMd;
+  $('morMdNote').textContent = T.morMdNote;
+  $('morPwTtl').textContent = T.morPw;
+  $('morPwNote').textContent = T.morPwNote;
+  $('morPw').placeholder = T.morPwHint;
+  $('bMorOcr').textContent = T.morGo;
+  $('bMorWm').textContent = T.morGo;
+  $('bMorPg').textContent = T.morGo;
+  $('bMorMd').textContent = T.morGo;
+  $('bMorPwOn').textContent = T.morPwOn;
+  $('bMorPwOff').textContent = T.morPwOff;
+  $('bMorClose').textContent = T.rdtCancel;
+  /* СПИСКИ ЗАПОЛНЯЕМ КОДОМ, А НЕ РАЗМЕТКОЙ: подписи приходят из i18n, и зашитые в HTML
+     остались бы русскими у англоязычного человека (это ловит pdf44). */
+  _morFill('morOcrLang', [['ru+en', T.morLangBoth], ['ru', 'RU'], ['en', 'EN']]);
+  /* ЗНАЧЕНИЯ - КОНТРАКТ ВОРКЕРА (`{n}` и `{N}`), ПОДПИСИ - ДЛЯ ЧЕЛОВЕКА. Первая редакция
+     слала «n/N» вместо «{n}/{N}», и воркер честно отвечал «в формате нет {n} - номеру
+     негде появиться»: отказ на исправной кнопке (поймано живым прогоном 22.10). */
+  _morFill('morPgFmt', [['{n}', '1'], ['{n}/{total}', T.morFmtOfN],
+                        [T.morFmtWordVal, T.morFmtWord]]);
+  /* ЗНАЧЕНИЯ - ИМЕНА ИЗ РЕЕСТРА ВОРКЕРА (`PG_POS`), а не свои сокращения: «br» воркер
+     честно отвергал «положение не из списка» - отказ на исправной кнопке. */
+  _morFill('morPgPos', [['bottom-right', T.morPosBR], ['bottom-center', T.morPosBC],
+                        ['bottom-left', T.morPosBL], ['top-right', T.morPosTR],
+                        ['top-center', T.morPosTC], ['top-left', T.morPosTL]]);
+  morSay('');
+  $('mor').classList.add('on');
+  $('morBar').hidden = false;
+}
+
+function _morFill(id, пары) {
+  const el = $(id);
+  if (el.dataset.filled) return;
+  el.dataset.filled = '1';
+  for (const [v, t] of пары) {
+    const o = document.createElement('option');
+    o.value = v; o.textContent = t;
+    el.appendChild(o);
+  }
+}
+
+/* ОДНА ДВЕРЬ НА ПЯТЬ ОПЕРАЦИЙ: ожидание, отказ, перерисовка и слова человеку устроены у
+   них одинаково, и пять копий этого разошлись бы на первой правке (закон №40). Разное -
+   только тело запроса, надо ли перерисовывать холст и чем кончить. */
+async function morRun(тело, опции) {
+  const o = опции || {};
+  if (MOR_BUSY) return;
+  const off = whyOff();
+  if (off) { morSay(off, 'bad'); return; }
+  MOR_BUSY = true;
+  morSay(o.working || T.working);
+  try {
+    if (!(await apply(тело))) { morSay($('say').textContent || T.working, 'bad'); return; }
+    if (o.redraw) await reshow();
+    morSay(o.done ? o.done(LAST_RES || {}) : T.ready, 'ok');
+    if (o.note) note(o.note);
+  } finally {
+    MOR_BUSY = false;
+  }
+}
+
+async function morOcr() {
+  await morRun({ op: 'ocr', lang: $('morOcrLang').value },
+               { working: T.morOcrWork, redraw: true,
+                 done: (r) => T.morOcrDone(r.ocred || r.pages || 0, r.chars || 0) });
+}
+
+async function morWm() {
+  const t = ($('morWmText').value || '').trim();
+  if (!t) { morSay(T.morWmNeed, 'bad'); return; }
+  await morRun({ op: 'watermark', text: t },
+               { redraw: true, done: (r) => T.morWmDone(r.marked || r.pages || 0),
+                 note: T.morWmSafe });
+}
+
+async function morPg() {
+  await morRun({ op: 'page_numbers', fmt: $('morPgFmt').value, pos: $('morPgPos').value },
+               { redraw: true, done: (r) => T.morPgDone(r.marked || r.pages || 0) });
+}
+
+async function morMd() {
+  await morRun({ op: 'to_markdown' },
+               { done: (r) => T.morMdDone(r.pages || 0, r.tables || 0), note: T.morMdSave });
+}
+
+async function morPwSet(on) {
+  const pw = $('morPw').value || '';
+  if (!pw) { morSay(T.morPwNeed, 'bad'); return; }
+  /* ПОЛЕ ЧИСТИМ СРАЗУ, А НЕ ПОСЛЕ ОТВЕТА: пароль не должен лежать в DOM дольше, чем
+     нужно на один запрос, а ответ может идти секунды. */
+  $('morPw').value = '';
+  await morRun({ op: on ? 'protect' : 'unlock', password: pw },
+               { done: () => (on ? T.morPwOnDone : T.morPwOffDone),
+                 note: on ? T.morPwNote : '' });
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ОБРЕЗКА ПОЛЕЙ: ОДНА РАМКА, И ОНА ПРО ТО, ЧТО ОСТАНЕТСЯ
+   ═══════════════════════════════════════════════════════════════════════════════
+   РАМКА ОДНА НА ВЕСЬ ДОКУМЕНТ, А НЕ ПО ОДНОЙ НА СТРАНИЦУ: поля у сканов и вёрстки
+   одинаковы на всех листах, и предложи мы обводить каждый - человек бы обводил сорок раз
+   ради одного и того же числа. Первый лист показан как образец; то, что рамка применится
+   ко всем, сказано словами НА ЭКРАНЕ, а не оставлено на догадку.
+
+   ОБРЕЗКА МЕНЯЕТ ПОКАЗ (`/CropBox`), А НЕ УДАЛЯЕТ СОДЕРЖИМОЕ - и это написано здесь же:
+   экран с похожей рамкой рядом («Скрыть данные») делает ровно обратное, и перепутать их
+   значило бы для человека «я убрал адрес» там, где адрес остался в файле. */
+let CRP = { page: 0 };
+
+function crpSay(t, cls) {
+  const e = $('crpSay');
+  e.textContent = t || '';
+  e.style.color = cls === 'bad' ? 'var(--bad)' : 'var(--dim)';
+}
+
+function crpClose() {
+  $('crp').classList.remove('on');
+  $('crpBar').hidden = true;
+}
+
+async function crpOpen() {
+  const off = whyOff();
+  if (off) { say(off, 'bad'); return; }
+  /* ДОКУМЕНТА НЕТ - МОЛЧА НИЧЕГО НЕ ДЕЛАЕМ, РОВНО КАК ОСТАЛЬНЫЕ ЭКРАНЫ (`rdtOpen`):
+     кнопки тулбара до загрузки файла вообще скрыты, и свой текст здесь означал бы ключ,
+     которого человек не увидит никогда. */
+  if (!DOC || !PAGES.length) return;
+  CRP.page = 0;
+  $('crpTtl').textContent = T.crpTtl;
+  $('crpHint').textContent = T.crpHint;
+  $('bCrpCancel').textContent = T.rdtCancel;
+  $('bCrpReset').textContent = T.crpReset;
+  $('bCrpGo').textContent = T.crpGo;
+  crpSay('');
+  $('crp').classList.add('on');
+  $('crpBar').hidden = false;
+  await crpPaintPage();
+}
+
+async function crpPaintPage() {
+  const cv = await paintSheet('crpPageCv', CRP.page);
+  $('crpPage').textContent = T.crpPage(PAGES.length);
+  /* РАМКА ПО УМОЛЧАНИЮ - ТИПИЧНЫЕ ПОЛЯ, А НЕ ВЕСЬ ЛИСТ: рамка размером в страницу
+     выглядит как «ничего не выбрано», и человек не понимает, что ему делать. */
+  const box = $('crpBox');
+  box.style.left = Math.round(cv.clientWidth * 0.07) + 'px';
+  box.style.top = Math.round(cv.clientHeight * 0.07) + 'px';
+  box.style.width = Math.round(cv.clientWidth * 0.86) + 'px';
+  box.style.height = Math.round(cv.clientHeight * 0.86) + 'px';
+  wireBox(cv, box, $('crpGrip'));
+}
+
+async function crpGo() {
+  const off = whyOff();
+  if (off) { crpSay(off, 'bad'); return; }
+  const доли = boxFractions($('crpPageCv'), $('crpBox'));
+  if (!доли) { crpSay(T.crpNone, 'bad'); return; }
+  /* ПРОВЕРКА РАЗМЕРА СТОИТ И ЗДЕСЬ, И У ВОРКЕРА, И ЭТО НЕ ДУБЛЬ ПРАВИЛА: воркер решает
+     ЧИСЛОМ (его потолок - правда), а страница обязана сказать человеку ДО отправки, иначе
+     он ждёт результат и получает отказ. Текст один, число - его. */
+  if (доли.nw < 0.02 || доли.nh < 0.02) { crpSay(T.crpSmall, 'bad'); return; }
+  crpSay(T.working);
+  if (!(await apply({ op: 'crop', box: JSON.stringify(доли) }))) {
+    crpSay($('say').textContent || T.working, 'bad');
+    return;
+  }
+  crpClose();
+  const pct = Math.round((1 - доли.nw * доли.nh) * 100);
+  const стр = PAGES.length;
+  /* ХОЛСТ ОБЯЗАН ПОКАЗАТЬ ОБРЕЗАННОЕ: иначе единственный ответ человеку - слово
+     «готово», а глазами он видит прежние поля. */
+  const видно = await reshow();
+  say(T.crpDone(стр, pct) + (видно ? '' : ' ' + T.crpNoShow), видно ? 'ok' : 'bad');
+  note(T.crpNote);
+}
+
+async function crpReset() {
+  const off = whyOff();
+  if (off) { crpSay(off, 'bad'); return; }
+  crpSay(T.working);
+  /* ОБРАТНЫЙ ПУТЬ ЕСТЬ И ОН ПРОВЕРЕН (закон №55): промах рамкой не должен стоить
+     человеку повторной загрузки документа. */
+  if (!(await apply({ op: 'crop', reset: '1' }))) {
+    crpSay($('say').textContent || T.working, 'bad');
+    return;
+  }
+  crpClose();
+  const видно2 = await reshow();
+  say(T.crpOff + (видно2 ? '' : ' ' + T.crpNoShow), видно2 ? 'ok' : 'bad');
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -1615,6 +2834,7 @@ async function cmpOpen() {
   const off = whyOff();
   if (off) { say(off, 'bad'); return; }
   CMP = { file: null, doc: null, res: null, page: 0, mode: 'words', sent: false };
+  MRG_WAIT = false;
   $('cmpTtl').textContent = T.cmpTtl;
   $('cmpWhat').textContent = T.cmpWhat;
   $('bCmpPick').textContent = T.cmpPick;
@@ -1659,20 +2879,15 @@ async function cmpPick(f) {
        ЗДЕСЬ, а не после ожидания сравнения на сервере. */
     if (!pdfjs) { cmpSay(T.cmpNoPdfjs, 'bad'); return; }
     CMP.doc = await pdfjs.getDocument({ data: new Uint8Array(buf.slice(0)) }).promise;
-    const r = await fetch(u('/pdf/second'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/pdf', 'X-Pdf-Name': encodeURIComponent(f.name || 'cmp.pdf') },
-      body: buf,
-    });
-    const j = await r.json().catch(() => null);
-    if (!r.ok || !j || !j.ok) {
+    const sent = await sendSecond(f, buf);
+    if (!sent.ok) {
       CMP.file = null; CMP.doc = null;
-      cmpSay((j && (j.human || j.error)) || ('HTTP ' + r.status), 'bad');
+      cmpSay(sent.why, 'bad');
       $('cmpWhich').textContent = T.cmpNoFile;
       return;
     }
     CMP.sent = true;
-    cmpSay(T.cmpReady(j.pages || CMP.doc.numPages));
+    cmpSay(T.cmpReady(sent.pages || CMP.doc.numPages));
   } catch (e) {
     CMP.file = null; CMP.doc = null;
     $('cmpWhich').textContent = T.cmpNoFile;
@@ -1876,6 +3091,190 @@ function cmpPaintPixels(r) {
   d.style.color = 'var(--dim)';
   d.textContent = r.note || '';
   mv.appendChild(d);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   ПРАВКА ТЕКСТА: ТАП ПО СТРОКЕ, ПОЛЕ ПОВЕРХ НЕЁ, ПЕРЕРИСОВКА РЕЗУЛЬТАТОМ
+   ═══════════════════════════════════════════════════════════════════════════════
+   ТРИ РЕШЕНИЯ ЭТОГО ЭКРАНА, И КАЖДОЕ СТОИТ НА ЧУЖОМ ОТКАЗЕ:
+
+   1. СТРОКИ БЕРУТСЯ У ВОРКЕРА, А НЕ ИЗ ТЕКСТОВОГО СЛОЯ pdf.js. Текстовый слой у нас под
+      рукой, рисовать по нему зоны было бы дешевле и быстрее. Но правку делает PDFium, а
+      pdf.js делит строки по-своему: человек тронул бы блок, текста которого редактор НЕ
+      НАХОДИТ, и получил бы «такого текста нет» на том, что видит глазами. Сигнал,
+      добытый соседним путём, тут не годится (закон №41).
+
+   2. РЕЗУЛЬТАТ ПЕРЕРИСОВЫВАЕТСЯ ФАЙЛОМ С СЕРВЕРА (`reshow`), а не нашим представлением о
+      том, что должно было получиться (закон №52). Для операции, у которой весь смысл в
+      ВИДЕ, «готово» без листа это и есть «не сработало» - живой отказ обрезки 14.10.
+
+   3. ПРО ПОДПИСЬ СКАЗАНО ДО ПЕРВОЙ ПРАВКИ, А НЕ ПОСЛЕ ФАЙЛА: после неё она уже
+      недействительна, и предупреждать поздно (закон №32 - гейт стоит у действия).
+      Фраза берётся У ВОРКЕРА (`warn`), а не пишется здесь: он знает, сколько подписей и
+      что с ними будет, а вторая редакция одного предупреждения разошлась бы с первой. */
+let TXT = { page: 0, blocks: [], pick: null, asked: false, edited: 0 };
+
+const txtSay = (t, cls) => {
+  const e = $('txtSay');
+  e.textContent = t || '';
+  e.style.color = cls === 'bad' ? 'var(--bad)' : (cls === 'ok' ? 'var(--ok)' : 'var(--dim)');
+};
+
+function txtClose() {
+  $('txt').classList.remove('on');
+  $('txtBar').hidden = true;
+}
+
+async function txtOpen() {
+  if (!DOC) return;
+  const off = whyOff();
+  if (off) { say(off, 'bad'); return; }
+  TXT = { page: 0, blocks: [], pick: null, asked: false, edited: 0 };
+  $('txtTtl').textContent = T.txtTtl;
+  $('txtHint').textContent = T.txtHint;
+  $('bTxtPrev').textContent = '‹';
+  $('bTxtNext').textContent = '›';
+  $('bTxtDrop').textContent = T.txtDrop;
+  $('bTxtGo').textContent = T.txtGo;
+  $('bTxtCancel').textContent = T.txtCancel;
+  $('txtWarn').hidden = true;
+  $('txtEdit').hidden = true;
+  $('txtCut').textContent = '';
+  $('txt').classList.add('on');
+  $('txtBar').hidden = false;
+  txtSay('');
+  await txtLoad();
+}
+
+/* СТРОКИ СТРАНИЦЫ - ОДНИМ ЗАПРОСОМ НА ЛИСТ, А НЕ НА ВЕСЬ ДОКУМЕНТ: у договора на сорок
+   листов это сорок тысяч рамок, из которых человек смотрит одну страницу. */
+async function txtLoad() {
+  TXT.pick = null;
+  TXT.blocks = [];
+  $('txtEdit').hidden = true;
+  txtSay(T.txtLoad);
+  if (!(await apply({ op: 'text_blocks', page: String(TXT.page + 1) }))) {
+    txtSay($('say').textContent || T.txtFail, 'bad');
+    return;
+  }
+  const r = LAST_RES || {};
+  TXT.blocks = r.blocks || [];
+  /* ПОДПИСЬ - СЛОВАМИ ВОРКЕРА И ДО ПЕРВОГО ТАПА. */
+  if (r.signed && r.warn) {
+    $('txtWarn').hidden = false;
+    $('txtWarn').textContent = T.txtWarnSig(r.warn);
+  }
+  /* ОБРЕЗКА СПИСКА НАЗЫВАЕТ СЕБЯ СЛОВАМИ ВОРКЕРА (закон №64): человек, не нашедший свою
+     строку, должен знать, что её срезали, а не решить, что её нет. */
+  $('txtCut').textContent = r.human_cut || '';
+  txtSay(TXT.blocks.length ? '' : T.txtNone, TXT.blocks.length ? '' : 'bad');
+  await txtPaintPage();
+}
+
+async function txtPaintPage() {
+  const total = PAGES.length;
+  TXT.page = Math.max(0, Math.min(TXT.page, total - 1));
+  const p = PAGES[TXT.page];
+  const cv = $('txtPageCv');
+  /* ЛИСТ БЕРЁМ ЧЕРЕЗ `docFor`, А НЕ У `DOC`: после объединения номер страницы
+     продолжается во ВТОРОМ документе, и спроси мы седьмую у первого (где их четыре) -
+     pdf.js отказал бы, а холст показал бы пустоту. */
+  const d = docFor(p.src);
+  const page = await d.doc.getPage(d.n);
+  const v0 = page.getViewport({ scale: 1, rotation: (page.rotate + p.rot) % 360 });
+  const wide = Math.min(520, (window.innerWidth || 360) - 56);
+  const v = page.getViewport({ scale: wide / v0.width, rotation: (page.rotate + p.rot) % 360 });
+  cv.width = Math.ceil(v.width); cv.height = Math.ceil(v.height);
+  cv.style.width = Math.ceil(v.width) + 'px';
+  $('txtWrap').hidden = false;
+  $('txtNav').hidden = false;
+  await page.render({ canvasContext: cv.getContext('2d'), viewport: v }).promise;
+  $('txtPage').textContent = T.txtPage(TXT.page + 1, total);
+  txtPaintHits();
+}
+
+function txtPaintHits() {
+  const wrap = $('txtWrap'), cv = $('txtPageCv');
+  for (const el of [...wrap.querySelectorAll('.txtHit')]) el.remove();
+  const W = cv.clientWidth || cv.width, H = cv.clientHeight || cv.height;
+  TXT.blocks.forEach((b, i) => {
+    const d = document.createElement('div');
+    d.className = 'txtHit' + (TXT.pick === i ? ' sel' : (b.done ? ' done' : ''));
+    d.style.left = (b.nx * W) + 'px';
+    d.style.top = (b.ny * H) + 'px';
+    d.style.width = Math.max(6, b.nw * W) + 'px';
+    /* ЗОНА НЕ ТОНЬШЕ ПАЛЬЦА. Строка кегля 8 на ужатом холсте это 5 пикселей, и попасть по
+       ней нельзя - человек решил бы, что экран не отвечает, а не что он промахнулся. */
+    d.style.height = Math.max(14, b.nh * H) + 'px';
+    d.onclick = () => txtPick(i);
+    wrap.appendChild(d);
+  });
+}
+
+function txtPick(i) {
+  const b = TXT.blocks[i];
+  if (!b) return;
+  TXT.pick = i;
+  $('txtEdit').hidden = false;
+  $('txtWas').textContent = T.txtWas(b.t);
+  $('txtInput').value = b.t;
+  $('txtNote').textContent = '';
+  txtSay('');
+  txtPaintHits();
+  $('txtInput').focus();
+}
+
+function txtDrop() {
+  TXT.pick = null;
+  $('txtEdit').hidden = true;
+  txtPaintHits();
+  txtSay('');
+}
+
+async function txtApply() {
+  const off = whyOff();
+  if (off) { txtSay(off, 'bad'); return; }
+  const b = TXT.blocks[TXT.pick];
+  if (!b) return;
+  const было = b.t;
+  const стало = $('txtInput').value;
+  if (стало === было) { txtSay(T.txtSame, 'bad'); return; }
+  if (!стало) { txtSay(T.txtEmpty, 'bad'); return; }
+  /* ═══ ПРО ПОДПИСЬ СПРАШИВАЕМ ОДИН РАЗ И ДО ПЕРВОЙ ПРАВКИ ═══
+     Второй вопрос на каждую строку человек перестанет читать уже на третьей, а смысл у
+     него ровно один: «ты знаешь, что подпись умрёт». Она умирает на ПЕРВОЙ правке. */
+  if (!TXT.asked && !$('txtWarn').hidden) {
+    TXT.asked = true;
+    if (!(await askYesNo(T.txtAsk))) return;
+  }
+  txtSay(T.working);
+  const ok = await apply({
+    op: 'text_edit',
+    edits: JSON.stringify([{ page: b.p, old: было, new: стало, nth: b.nth }]),
+  });
+  if (!ok) { txtSay($('say').textContent || T.txtFail, 'bad'); return; }
+  const res = LAST_RES || {};
+  TXT.edited += 1;
+  /* ═══ ЛИСТ ПЕРЕРИСОВЫВАЕТСЯ ФАЙЛОМ С СЕРВЕРА ═══
+     Показать «как должно было получиться» значит однажды показать не то, что в файле. */
+  if (!(await reshow())) { txtSay(T.txtNoShow, 'bad'); return; }
+  /* ГРАНИЦУ ИЗ ОТВЕТА ВОРКЕРА ДОВОЗИМ ЕГО СЛОВАМИ: «буквы растянуты до 118%» решает,
+     годится результат или нет, а наш пересказ «вид немного изменился» не решает ничего
+     (закон №41 - сигнал, который у нас есть, не подменяется соседним). */
+  const оговорки = [];
+  for (const e of (res.edits || [])) {
+    for (const k of ['fit_note', 'font_note', 'spacing_note']) {
+      const t = (e && e[k] || '').trim();
+      if (t && оговорки.indexOf(t) < 0) оговорки.push(t);
+    }
+  }
+  $('txtEdit').hidden = true;
+  TXT.pick = null;
+  /* СТРОКИ ПЕРЕСПРАШИВАЕМ ПОСЛЕ ПРАВКИ, А НЕ ПРАВИМ СПИСОК У СЕБЯ: текст страницы стал
+     другим, и рамки вместе с ним. Свой пересчёт разошёлся бы с документом на второй
+     правке той же строки. */
+  await txtLoad();
+  txtSay(T.txtDone + (оговорки.length ? ' ' + оговорки.join(' · ') : ''), 'ok');
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -2215,6 +3614,10 @@ window.__studio = {
   page: () => SIG_PAGE,
   phase: () => SIG_PHASE,
   png: () => SIG_PNG.slice(0, 24),
+  /* ПЕРЕРИСОВКА ХОЛСТА - ТОЖЕ БОЕВАЯ ФУНКЦИЯ, А НЕ КОПИЯ В ПРОБЕ. Браузерному прогону
+     она нужна, чтобы поставить на холст ТОТ ЖЕ лист, по которому воркер считал блоки:
+     заведи проба свою загрузку - она проверяла бы правку против другого документа. */
+  reshow: () => reshow(),
 };
 
 async function sigNext() {
@@ -2241,8 +3644,15 @@ function texts() {
      висел русский текст (закон №20, мой же недосмотр этапов 3 и 4). Сторож pdf36
      сверяет РАЗМЕТКУ со этим списком: появилась кнопка с текстом - будет и ключ. */
   $('bForm').textContent = T.form;
+  $('bCrop').textContent = T.crp;
+  $('bMore').textContent = T.mor;
   $('bRdt').textContent = T.rdt;
   $('bCmp').textContent = T.cmp;
+  $('bTxt').textContent = T.txt;
+  $('bAnn').textContent = T.ann;
+  $('bMrg').textContent = T.mrg;
+  $('bSpl').textContent = SPL.on ? T.splOff : T.spl;
+  $('bSplGo').textContent = T.splGo;
   $('bSave').textContent = T.save; $('bChat').textContent = T.chat;
   $('foot').textContent = T.foot;
   document.title = T.ttl;
@@ -2259,19 +3669,40 @@ function texts() {
   if (!pdfjs) note('pdf.js не загрузился - страницы показать нечем. '
                  + 'Скачивание и отправка в чат при этом работают.');
 
+  /* ЧТО ПРОСИЛИ ОТКРЫТЬ - ЧИТАЕМ ИЗ АДРЕСА. Неизвестное имя игнорируем молча: чужой
+     параметр в ссылке не повод пугать человека ошибкой. */
+  try {
+    const _s = (new URLSearchParams(location.search)).get('screen') || '';
+    if (SCREENS[_s]) {
+      WANT_SCREEN = _s;
+      note(T.scrWait);
+    }
+  } catch (e) { /* адрес без параметров */ }
+
   $('drop').onclick = () => $('file').click();
-  $('file').onchange = (e) => { const f = e.target.files[0]; if (f) upload(f); };
+  /* ЗНАЧЕНИЕ ВВОДА СБРАСЫВАЕМ: выбери человек тот же набор второй раз - `change` не
+     придёт вовсе, и страница будет выглядеть замершей. */
+  /* СПИСОК КОПИРУЕТСЯ ДО СБРОСА, И ЭТО НЕ СТИЛЬ: `files` - ЖИВОЙ объект ввода, и
+     `value = ''` обнуляет его же. Первая редакция читала `files` после сброса и получала
+     пустой список: документ не открывался ВОВСЕ, а выглядело это как «страница зависла».
+     Нашёл браузерный прибор на первом же прогоне (закон №75). */
+  $('file').onchange = (e) => {
+    const fs = [...e.target.files];
+    e.target.value = '';
+    pick(fs);
+  };
   ['dragenter', 'dragover'].forEach((n) => document.addEventListener(n, (e) => {
     e.preventDefault(); $('drop').classList.add('hot');
   }));
   ['dragleave', 'drop'].forEach((n) => document.addEventListener(n, (e) => {
     e.preventDefault(); $('drop').classList.remove('hot');
   }));
+  /* ПЕРЕТАСКИВАНИЕ ИДЁТ ТЕМ ЖЕ РЕШАТЕЛЕМ, ЧТО КНОПКА (`pick`): своя проверка формата
+     здесь была второй копией правила, и с приходом картинок она отказывала бы на том,
+     что кнопка принимает (закон №40). */
   document.addEventListener('drop', (e) => {
-    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-    if (!f) return;
-    if (!/\.pdf$/i.test(f.name || '')) { say(T.notPdf, 'bad'); return; }
-    upload(f);
+    const fs = e.dataTransfer && e.dataTransfer.files;
+    if (fs && fs.length) pick(fs);
   });
   $('bAll').onclick = () => { PAGES.forEach((p) => p.sel = true); paint(); };
   $('bNone').onclick = () => { PAGES.forEach((p) => p.sel = false); paint(); };
@@ -2293,8 +3724,34 @@ function texts() {
     DIRTY = true; say(''); paint();
   };
   $('bZip').onclick = async () => { await apply({ op: 'compress' }); };
+  /* ОБЪЕДИНЕНИЕ БЕРЁТ ВТОРОЙ ФАЙЛ ТЕМ ЖЕ ВВОДОМ, ЧТО СРАВНЕНИЕ (`cmpFile`), НО РАЗБИРАЕТ
+     ЕГО СВОИМ обработчиком: один `<input type=file>` на две операции - это одна дверь к
+     файловой системе, а решают они разное. Какой из двух ждёт файл, помнит `MRG_WAIT`:
+     без него второй выбор уехал бы в сравнение (`onchange` у ввода один). */
+  $('bMrg').onclick = () => {
+    const off = whyOff();
+    if (off) { say(off, 'bad'); return; }
+    if (!DOC) { say(T.mrgPick, 'bad'); return; }
+    MRG_WAIT = true;
+    say(T.mrgPick);
+    $('cmpFile').click();
+  };
+  $('bSpl').onclick = () => splMode(!SPL.on);
+  $('bSplGo').onclick = splGo;
   $('bSign').onclick = sigOpen;
   $('bForm').onclick = frmOpen;
+  $('bCrop').onclick = crpOpen;
+  $('bMore').onclick = morOpen;
+  $('bMorClose').onclick = morClose;
+  $('bMorOcr').onclick = morOcr;
+  $('bMorWm').onclick = morWm;
+  $('bMorPg').onclick = morPg;
+  $('bMorMd').onclick = morMd;
+  $('bMorPwOn').onclick = () => morPwSet(true);
+  $('bMorPwOff').onclick = () => morPwSet(false);
+  $('bCrpCancel').onclick = crpClose;
+  $('bCrpReset').onclick = crpReset;
+  $('bCrpGo').onclick = crpGo;
   $('bRdt').onclick = rdtOpen;
   $('bRdtCancel').onclick = rdtClose;
   $('bRdtAdd').onclick = rdtAdd;
@@ -2303,13 +3760,35 @@ function texts() {
   $('bFrmAdd').onclick = frmAddMode;
   $('bFrmGo').onclick = frmGo;
   $('bCmp').onclick = cmpOpen;
+  $('bTxt').onclick = txtOpen;
   $('bCmpCancel').onclick = cmpClose;
-  $('bCmpPick').onclick = () => $('cmpFile').click();
-  $('cmpFile').onchange = (e) => { const f = e.target.files[0]; if (f) cmpPick(f); };
+  $('bCmpPick').onclick = () => { MRG_WAIT = false; $('cmpFile').click(); };
+  $('cmpFile').onchange = (e) => {
+    const f = e.target.files[0];
+    /* ВВОД СБРАСЫВАЕМ ВСЕГДА: без этого второй выбор ТОГО ЖЕ файла не даёт `onchange`
+       вовсе (значение не изменилось), и человек нажимает кнопку, а ничего не происходит. */
+    e.target.value = '';
+    if (!f) return;
+    if (MRG_WAIT) { MRG_WAIT = false; mrgGo(f); return; }
+    cmpPick(f);
+  };
   $('bCmpMode').onclick = () => cmpMode(true);
   $('bCmpGo').onclick = cmpGo;
   $('bCmpPrev').onclick = () => { CMP.page -= 1; cmpPaintPage(); };
   $('bCmpNext').onclick = () => { CMP.page += 1; cmpPaintPage(); };
+  /* ПРАВКА ТЕКСТА. Листание ПЕРЕСПРАШИВАЕТ СТРОКИ, а не только перерисовывает холст:
+     блоки приходят на ОДНУ страницу, и показать лист без них значило бы показать лист,
+     по которому ничего не тапается. */
+  $('bAnnCancel').onclick = annClose;
+  $('bAnnAdd').onclick = annAdd;
+  $('bAnnGo').onclick = annGo;
+  $('annBurn').onchange = annBurnNote;
+  $('bAnn').onclick = annOpen;
+  $('bTxtCancel').onclick = txtClose;
+  $('bTxtPrev').onclick = () => { TXT.page -= 1; txtLoad(); };
+  $('bTxtNext').onclick = () => { TXT.page += 1; txtLoad(); };
+  $('bTxtDrop').onclick = txtDrop;
+  $('bTxtGo').onclick = txtApply;
   $('bSigCancel').onclick = sigClose;
   $('bSigGo').onclick = sigNext;
   $('bSigKeep').onclick = sigKeep;
