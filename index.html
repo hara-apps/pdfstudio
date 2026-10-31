@@ -912,6 +912,7 @@ const T = {
     cmpNeedFile: 'Сначала выбери вторую версию документа.',
     cmpBadFile: 'Этот файл не открылся как PDF.',
     cmpNoPdfjs: 'pdf.js не поднялся - показать лист нечем.',
+    noPdfjs: 'pdf.js не загрузился - страницы показать нечем. Скачивание и отправка в чат при этом работают.',
     cmpCancel: 'Отмена',
     cmpGo: '🔍 Сравнить',
     cmpModeWords: 'мерка: слова',
@@ -1204,6 +1205,7 @@ const T = {
     cmpNeedFile: 'Choose the second version of the document first.',
     cmpBadFile: 'This file did not open as a PDF.',
     cmpNoPdfjs: 'pdf.js did not load - nothing to draw the page with.',
+    noPdfjs: 'pdf.js did not load - nothing to show pages with. Download and sending to chat still work.',
     cmpCancel: 'Cancel',
     cmpGo: '🔍 Compare',
     cmpModeWords: 'measure: words',
@@ -1300,7 +1302,7 @@ const T = {
   },
 }[LANG];
 
-const VERSION = '95541a3d1a1d';
+const VERSION = 'ab0de27d4424';
 /* АДРЕСА - ПАРАМЕТРОМ ССЫЛКИ СИЛЬНЕЕ ЗАШИТОГО ПРИ ВЫКЛАДКЕ. Причина записана в
    publish_static.page_url и стоила полдня: `https://rtc.harma.cc` подставляется В МОМЕНТ ДЕПЛОЯ, и
    если Worker тогда не был в реестре, страница остаётся без адреса НАВСЕГДА. Ссылку же
@@ -1324,25 +1326,52 @@ function whyOff() {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
-   PDF.JS: СОВРЕМЕННАЯ СБОРКА, ОТКАТ НА LEGACY БЕЗ ПЕРЕДЕЛКИ
-   Обе лежат рядом со страницей (условие Ren: откат не должен требовать выкладки). Какая
-   из них поедет, решает ФАКТ загрузки, а не разбор UserAgent: UA врёт, а неудавшийся
-   импорт - это факт. Разница по весу мала (494 КБ gzip против 529), и держать вторую
-   ради вебвью, которого мы не видели живьём, дешевле, чем узнать о несовместимости от
-   человека.
+   PDF.JS: ТРИ СТУПЕНИ, И ТРЕТЬЯ ПОЯВИЛАСЬ ПО ЖИВОМУ ОТКАЗУ ПРОДА
+   Все три лежат рядом со страницей (условие Ren: откат не должен требовать выкладки).
+   Какая поедет, решает ФАКТ загрузки, а не разбор UserAgent: UA врёт, а неудавшийся
+   импорт - это факт.
+
+   ПОЧЕМУ ДВУХ СТУПЕНЕЙ НЕ ХВАТИЛО (отказ 31.10, Telegram Desktop на macOS). Студия
+   открылась и написала «pdf.js не загрузился»; отказали ОБЕ ступени СРАЗУ, и замер
+   показал, почему это было неизбежно (pdf.js 6.3.289):
+
+       признак                   современная   legacy
+       static{} (блок класса)         1           1
+       приватное поле `this.#`     3211        3211
+       `??=`                         12          12
+       `Promise.withResolvers`       27          27
+       `getOrInsertComputed`         17          23   <- ЕДИНСТВЕННАЯ разница
+
+   Legacy-сборка pdf.js подставляет ПОЛИФИЛЫ МЕТОДОВ (core-js) и не трогает СИНТАКСИС.
+   То есть лестница закрывала «нет такого МЕТОДА» (так было в Chromium 1194:
+   `getOrInsertComputed is not a function` уже на документе) и не закрывала «не понимаю
+   такого СИНТАКСИСА»: модуль с `static{}` не разбирается вовсе, `import()` отваливается
+   SyntaxError, и обе ступени падают ОДИНАКОВО. Пол по синтаксису у обеих - Safari 16.4
+   (на этой границе меняется вывод esbuild), то есть на macOS 12 и ниже студия была мертва.
+
+   ТРЕТЬЯ СТУПЕНЬ `./compat` - та же legacy, опущенная по синтаксису до es2017/safari15
+   (`tools/pdfjs_compat.py`, сборка лежит в git и сверяется с источником отпечатком).
+   Отрисовка проверена во всех трёх движках: chromium, webkit, firefox.
    ═══════════════════════════════════════════════════════════════════════════════ */
 let pdfjs = null, PDFJS_BUILD = '';
-const PDFJS_BUILDS = [['.', 'modern'], ['./legacy', 'legacy']];
+const PDFJS_BUILDS = [['.', 'modern'], ['./legacy', 'legacy'], ['./compat', 'compat']];
+/* ПРИЧИНЫ ОТКАЗОВ ПО СТУПЕНЯМ: файл и ошибка, по строке на ступень. Без этого человек
+   получал фразу «не загрузился», по которой нельзя отличить 404 от SyntaxError, а разбор
+   уходил на день (закон №22: число/факт без механизма хуже его отсутствия). */
+const PDFJS_WHY = [];
 async function loadOne(i) {
   if (i >= PDFJS_BUILDS.length) return null;
   const [dir, tag] = PDFJS_BUILDS[i];
+  const file = dir + '/pdf.min.mjs';
   try {
-    const lib = await import(dir + '/pdf.min.mjs');
+    const lib = await import(file);
     lib.GlobalWorkerOptions.workerSrc = dir + '/pdf.worker.min.mjs';
     PDFJS_BUILD = tag;
     return lib;
   } catch (e) {
-    console.log('[pdf] сборка ' + tag + ' не поднялась: ' + e);
+    const why = tag + ' (' + file + '): ' + ((e && (e.message || e.name)) || e);
+    PDFJS_WHY.push(why);
+    console.log('[pdf] сборка не поднялась - ' + why);
     return null;
   }
 }
@@ -1353,6 +1382,40 @@ async function loadPdfjs() {
   }
   return null;
 }
+/* ═══ ЧЕГО НЕ ХВАТИЛО ДВИЖКУ - СПРАШИВАЕМ У НЕГО, А НЕ У UA ═══
+   Строка уходит человеку и в консоль. Это ОБЪЯСНЕНИЕ, а не решение: решает по-прежнему
+   факт загрузки (ступени выше). Проверяем ровно то, на чём и спотыкается библиотека:
+   блок `static{}` в классе (Safari 16.4) и методы, которых у старых движков нет.
+   `new Function` нужен нарочно: такой синтаксис нельзя написать в самой странице - она
+   тогда не разберётся на том же движке целиком, а это как раз то, от чего мы лечимся. */
+function engineGaps() {
+  const out = [];
+  /* ДВА РАЗНЫХ ОТКАЗА `new Function` НЕ СЛИВАЮТСЯ В ОДНУ ФРАЗУ (закон №22): SyntaxError
+     значит «движок не знает такого синтаксиса», а любая другая ошибка - «проверить не
+     дали» (например, запрет eval политикой страницы). Сказать второе первым словами
+     значило бы послать человека менять macOS там, где дело в политике. */
+  try {
+    new Function('class X{static {}}');
+  } catch (e) {
+    out.push((e && e.name === 'SyntaxError')
+      ? 'нет блоков static{} в классах (Safari до 16.4)'
+      : 'про блоки static{} спросить не дали: ' + ((e && e.name) || 'неизвестно'));
+  }
+  try { if (!Map.prototype.getOrInsertComputed) out.push('нет Map.getOrInsertComputed (Safari до 26)'); } catch (e) { out.push('нет Map.getOrInsertComputed'); }
+  try { if (!Promise.withResolvers) out.push('нет Promise.withResolvers (Safari до 17.4)'); } catch (e) { out.push('нет Promise.withResolvers'); }
+  try { if (typeof OffscreenCanvas === 'undefined') out.push('нет OffscreenCanvas (Safari до 16.4)'); } catch (e) { out.push('нет OffscreenCanvas'); }
+  return out;
+}
+/* ОДНА ДВЕРЬ НА ВСЕ ФРАЗЫ «pdf.js не поднялся» (закон №40): их в странице четыре, и
+   четыре разных текста расходятся на первой же правке - а расхождение здесь означает,
+   что в одном месте причина названа, а в другом нет. */
+function pdfjsWhy(head) {
+  const g = engineGaps();
+  return (head || T.noPdfjs)
+       + (PDFJS_WHY.length ? ' Ступени: ' + PDFJS_WHY.join('; ') + '.' : '')
+       + (g.length ? ' Движок: ' + g.join(', ') + '.' : '')
+       + ' Движок целиком: ' + ((navigator && navigator.userAgent) || '?').slice(0, 120);
+}
 /* ═══ ОТКАТ НА LEGACY ИДЁТ И ПО ОТКАЗУ В РАБОТЕ, А НЕ ТОЛЬКО ПО ОТКАЗУ ИМПОРТА ═══
    НАЙДЕНО БРАУЗЕРНЫМ ПРОГОНОМ, а не чтением: в Chromium 1194 современная сборка
    ИМПОРТИРУЕТСЯ БЕЗ ЕДИНОЙ ОШИБКИ и падает уже на документе -
@@ -1360,12 +1423,41 @@ async function loadPdfjs() {
    по построению, и человек на старом вебвью получал бы сырую строку чужой ошибки вместо
    отката, ради которого вторая сборка и лежит рядом (условие Ren: откат без переделки). */
 async function pdfjsFallback() {
-  if (PDFJS_BUILD === 'legacy') return false;
-  const lib = await loadOne(1);
-  if (!lib) return false;
-  pdfjs = lib;
-  console.log('[pdf] современная сборка не сработала на документе - перешёл на legacy');
-  return true;
+  /* ИДЁМ ПО ОСТАВШИМСЯ СТУПЕНЯМ, А НЕ ПО ОДНОЙ НАЗВАННОЙ: со второй ступени отказ в
+     РАБОТЕ так же возможен, как с первой (`getOrInsertComputed` есть в обеих, полифил
+     только во второй и третьей), и жёсткое `loadOne(1)` оставляло бы третью ступень
+     недостижимой с legacy - то есть ровно там, где она и нужна. */
+  const было = PDFJS_BUILDS.findIndex((b) => b[1] === PDFJS_BUILD);
+  for (let i = (было < 0 ? 0 : было) + 1; i < PDFJS_BUILDS.length; i++) {
+    const lib = await loadOne(i);
+    if (!lib) continue;
+    pdfjs = lib;
+    console.log('[pdf] сборка не сработала на документе - перешёл на ' + PDFJS_BUILD);
+    return true;
+  }
+  return false;
+}
+
+/* ═══ ОДНА ДВЕРЬ НА ОТКРЫТИЕ ДОКУМЕНТА, И В НЕЙ ЗАПРЕТ `ImageDecoder` ═══
+   НАЙДЕНО ПЕРВЫМ ЖЕ ПРОГОНОМ В WEBKIT (31.10). PDF, внутри которого лежат JPEG (а это
+   КАЖДЫЙ скан и каждая страница, собранная из снимков телефона), УРОНИЛ СТРАНИЦУ ЦЕЛИКОМ:
+   не исключение, не пустой холст - падение процесса вкладки. В chromium и firefox тот же
+   файл рисуется. Замер на одном документе (27 КБ, 3 страницы из JPEG):
+
+       движок     как есть          isImageDecoderSupported: false
+       webkit     СТРАНИЦА МЕРТВА   3 страницы отрисованы
+       chromium   3 страницы        3 страницы
+       firefox    3 страницы        3 страницы
+
+   Виновник - WebCodecs `ImageDecoder`, которым pdf.js 6.x декодирует картинки В ВОРКЕРЕ
+   (`isOffscreenCanvasSupported` тут ни при чём: с ним выключенным webkit падал так же).
+   Отключаем ВО ВСЕХ движках, а не по разбору UA: UA врёт (это же правило в лестнице
+   сборок выше), а цена отключения - только скорость декодирования картинок, тогда как
+   цена падения - человек теряет документ и не получает даже причины.
+   ТРИ МЕСТА БЫЛО, ДВЕРЬ ОДНА (закон №40): без неё запрет уехал бы в одно из трёх, а
+   сравнение версий и второй документ продолжали бы ронять вкладку. */
+function openDoc(bytes) {
+  return pdfjs.getDocument({ data: bytes, isImageDecoderSupported: false }).promise;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -1554,7 +1646,7 @@ async function upload(f) {
 
 /* ── отрисовка ─────────────────────────────────────────────────────────────────── */
 async function render(fileOrBytes) {
-  if (!pdfjs) { say('pdf.js не поднялся - показать страницы нечем.', 'bad'); return; }
+  if (!pdfjs) { say(pdfjsWhy(), 'bad'); return; }
   say(T.loading);
   /* БАЙТЫ БЕРЁМ ЗАНОВО НА КАЖДУЮ ПОПЫТКУ, И ЭТО НЕ ПЕДАНТИЗМ: pdf.js ПЕРЕДАЁТ буфер
      воркеру, то есть ОТСОЕДИНЯЕТ его. Замер: вторая попытка на том же буфере падала
@@ -1576,7 +1668,7 @@ async function render(fileOrBytes) {
 }
 
 async function renderWith(buf) {
-  DOC = await pdfjs.getDocument({ data: new Uint8Array(buf) }).promise;
+  DOC = await openDoc(new Uint8Array(buf));
   PAGES = [];
   for (let i = 1; i <= DOC.numPages; i++) PAGES.push({ src: i, rot: 0, sel: false });
   DOCS = [{ doc: DOC, from: 1 }];
@@ -1755,13 +1847,13 @@ async function mrgGo(f) {
   if (!/\.pdf$/i.test(f.name || '') && f.type && f.type !== 'application/pdf') {
     say(T.mrgNotPdf, 'bad'); return;
   }
-  if (!pdfjs) { say(T.cmpNoPdfjs, 'bad'); return; }
+  if (!pdfjs) { say(pdfjsWhy(T.cmpNoPdfjs), 'bad'); return; }
   say(T.mrgSend);
   try {
     const buf = await f.arrayBuffer();
     /* ВТОРОЙ ЛИСТ ОТКРЫВАЕМ ДО ОТПРАВКИ: битый файл честнее назвать здесь, чем после
        ожидания объединения на песочнице. */
-    const doc2 = await pdfjs.getDocument({ data: new Uint8Array(buf.slice(0)) }).promise;
+    const doc2 = await openDoc(new Uint8Array(buf.slice(0)));
     const sent = await sendSecond(f, buf);
     if (!sent.ok) { say(sent.why, 'bad'); return; }
     say(T.mrgWork);
@@ -2877,8 +2969,8 @@ async function cmpPick(f) {
     const buf = await f.arrayBuffer();
     /* ЛИСТ ВТОРОЙ ВЕРСИИ ГОТОВИМ СРАЗУ: если файл не открывается, человек узнает это
        ЗДЕСЬ, а не после ожидания сравнения на сервере. */
-    if (!pdfjs) { cmpSay(T.cmpNoPdfjs, 'bad'); return; }
-    CMP.doc = await pdfjs.getDocument({ data: new Uint8Array(buf.slice(0)) }).promise;
+    if (!pdfjs) { cmpSay(pdfjsWhy(T.cmpNoPdfjs), 'bad'); return; }
+    CMP.doc = await openDoc(new Uint8Array(buf.slice(0)));
     const sent = await sendSecond(f, buf);
     if (!sent.ok) {
       CMP.file = null; CMP.doc = null;
@@ -3666,8 +3758,7 @@ function texts() {
   else $('sub').textContent = '';
   checkVersion();
   pdfjs = await loadPdfjs();
-  if (!pdfjs) note('pdf.js не загрузился - страницы показать нечем. '
-                 + 'Скачивание и отправка в чат при этом работают.');
+  if (!pdfjs) note(pdfjsWhy());
 
   /* ЧТО ПРОСИЛИ ОТКРЫТЬ - ЧИТАЕМ ИЗ АДРЕСА. Неизвестное имя игнорируем молча: чужой
      параметр в ссылке не повод пугать человека ошибкой. */
