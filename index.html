@@ -3,6 +3,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>PDF-студия</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
+<!-- ПОЛИФИЛЫ СТАРОГО ВЕБВЬЮ - ОБЫЧНЫМ СКРИПТОМ ДО МОДУЛЕЙ (кейс 24.11, Safari < 17.4: pdf.js 6
+     даже в legacy-сборке зовёт Promise.withResolvers, Promise.try, AbortSignal.any без
+     полифила). Воркер берёт тот же файл через pdf.worker.shim.mjs. -->
+<script src="./polyfills.js"></script>
 <!--
   ═══ PDF-СТУДИЯ, ЭТАП 1 ═══
   ЧТО ЭТА СТРАНИЦА ДЕЛАЕТ САМА, А ЧТО ПРОСИТ У ДРУГИХ:
@@ -112,6 +116,10 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
   text-align:center; color:var(--dim); background:var(--card);
 }
 #drop.hot{border-color:var(--accent); color:var(--ink)}
+#fail{margin:10px 12px; padding:12px; border-radius:12px; background:rgba(220,60,60,.12);
+      font-size:14px; line-height:1.4}
+#fail .row{margin-top:10px}
+#fail[hidden]{display:none}
 #say{padding:10px 12px; font-size:13px; color:var(--dim); white-space:pre-wrap}
 #say.bad{color:var(--bad)} #say.ok{color:var(--ok)}
 #note{
@@ -389,6 +397,12 @@ button.sm{padding:6px 9px; min-height:32px; font-size:13px}
        accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,image/tiff,image/gif">
 <div id="grid"></div>
 <div id="say"></div>
+<!-- ОТКАЗ ОТКРЫТЬ ФАЙЛ - СЛОВАМИ И С ПОВТОРОМ (ТЗ Ren 24.11): сырой текст исключения человеку
+     не показывается, он уходит в консоль и в сигнал -->
+<div id="fail" hidden>
+  <div id="failText"></div>
+  <div class="row"><button id="bRetry" class="pri"></button><button id="bPick" class="sm"></button></div>
+</div>
 <div class="foot" id="foot"></div>
 
 <div id="bar" hidden>
@@ -711,6 +725,17 @@ const LANG = (Q.get('lang') || (tg && tg.initDataUnsafe && tg.initDataUnsafe.use
   ? 'en' : 'ru';
 const T = {
   ru: {
+    noOpen: 'Не открыл файл:', retry: '↻ Повторить', pickFile: 'Выбрать файл',
+    chatGet: 'Забираю файл из чата…',
+    errOld: 'встроенный браузер этого Telegram слишком старый для страниц PDF. Обнови '
+          + 'Telegram и систему (нужна iOS 15 или новее, на Mac - Safari 15) или открой '
+          + 'файл на другом устройстве.',
+    errNet: 'связь оборвалась по дороге. Проверь интернет и повтори.',
+    errPwd: 'документ под паролем, без него страницы не показать.',
+    errBad: 'файл повреждён или это не PDF.',
+    errAny: 'что-то пошло не так. Повтори или выбери файл здесь.',
+    errSlow: 'бот не ответил за полминуты. Повтори или выбери файл здесь.',
+    errSrv: (c) => 'сервер студии ответил отказом (' + c + ').',
     ttl: 'PDF-студия', drop: 'Перетащи сюда PDF или картинки (можно сразу несколько) '
                            + 'или нажми, чтобы выбрать',
     all: 'Все', none: 'Снять', keep: 'Оставить выделенные', del: 'Удалить выделенные',
@@ -1017,6 +1042,17 @@ const T = {
     ok: 'OK', cancel: 'Отмена', yes: 'Да', no: 'Нет',
   },
   en: {
+    noOpen: 'The file did not open:', retry: '↻ Try again', pickFile: 'Choose a file',
+    chatGet: 'Fetching the file from the chat…',
+    errOld: 'the browser inside this Telegram is too old for PDF pages. Update Telegram and '
+          + 'the system (iOS 15 or newer, Safari 15 on a Mac) or open the file on '
+          + 'another device.',
+    errNet: 'the connection dropped on the way. Check the internet and try again.',
+    errPwd: 'the document is password protected, its pages cannot be shown without it.',
+    errBad: 'the file is damaged or is not a PDF.',
+    errAny: 'something went wrong. Try again or choose the file here.',
+    errSlow: 'the bot did not answer in half a minute. Try again or choose the file here.',
+    errSrv: (c) => 'the studio server refused (' + c + ').',
     ttl: 'PDF studio', drop: 'Drop a PDF or images here (several at once is fine), '
                            + 'or tap to choose',
     all: 'All', none: 'Clear', keep: 'Keep selected', del: 'Delete selected',
@@ -1302,7 +1338,7 @@ const T = {
   },
 }[LANG];
 
-const VERSION = 'ab0de27d4424';
+const VERSION = 'f6961434023e';
 /* АДРЕСА - ПАРАМЕТРОМ ССЫЛКИ СИЛЬНЕЕ ЗАШИТОГО ПРИ ВЫКЛАДКЕ. Причина записана в
    publish_static.page_url и стоила полдня: `https://rtc.harma.cc` подставляется В МОМЕНТ ДЕПЛОЯ, и
    если Worker тогда не был в реестре, страница остаётся без адреса НАВСЕГДА. Ссылку же
@@ -1314,6 +1350,32 @@ const INIT = (tg && tg.initData) || '';
 const $ = (id) => document.getElementById(id);
 const say = (t, cls) => { const e = $('say'); e.textContent = t || ''; e.className = cls || ''; };
 const note = (t) => { const e = $('note'); e.textContent = t || ''; e.hidden = !t; };
+
+/* ═══ ОТКАЗ ОТКРЫТЬ ФАЙЛ: ПОНЯТНАЯ ПРИЧИНА И «ПОВТОРИТЬ» (ТЗ Ren 24.11) ═══
+   Прежде ошибка показывалась как есть - «Promise.withResolvers is not a function…», - и по ней
+   человек не мог понять ни что случилось, ни что делать. Здесь причина СЛОВАМИ (движок стар /
+   сеть / файл испорчен / под паролем / не вышло), а сырой текст - в консоль. `retry` - то, что
+   кнопка сделает: повторить ИМЕННО ту операцию, что упала, с нуля. */
+function human(e) {
+  const m = String((e && (e.message || e.name)) || e || '');
+  const n = String((e && e.name) || '');
+  console.log('[pdf] ошибка открытия: ' + n + ' ' + m);
+  if (/^пропуск не выдан/.test(m)) return m;
+  if (n === 'PasswordException' || /password/i.test(m)) return T.errPwd;
+  if (n === 'InvalidPDFException' || /invalid pdf|no pdf header/i.test(m)) return T.errBad;
+  if (/load failed|failed to fetch|networkerror|network connection/i.test(m)) return T.errNet;
+  if (/is not a function|is not defined|is not an object|undefined is not|not a constructor|SyntaxError|unexpected token|unexpected private/i.test(m)) return T.errOld;
+  return T.errAny;
+}
+function failBox(why, retry) {
+  say('');
+  $('failText').textContent = T.noOpen + ' ' + why;
+  $('bRetry').textContent = T.retry;
+  $('bPick').textContent = T.pickFile;
+  $('bRetry').onclick = () => { $('fail').hidden = true; retry(); };
+  $('bPick').onclick = () => { $('fail').hidden = true; $('file').click(); };
+  $('fail').hidden = false;
+}
 
 /* ═══ ПОЧЕМУ НЕ РАБОТАЕТ - ТРИ РАЗНЫХ ОТВЕТА, А НЕ ОДИН ═══
    Живой урок плеера: одна фраза «связи с ботом нет» стояла и там, где нет адреса, и там,
@@ -1365,7 +1427,8 @@ async function loadOne(i) {
   const file = dir + '/pdf.min.mjs';
   try {
     const lib = await import(file);
-    lib.GlobalWorkerOptions.workerSrc = dir + '/pdf.worker.min.mjs';
+    // ШИМ, А НЕ ВОРКЕР НАПРЯМУЮ: у воркера свой глобальный объект, полифилы нужны и там
+    lib.GlobalWorkerOptions.workerSrc = dir + '/pdf.worker.shim.mjs';
     PDFJS_BUILD = tag;
     return lib;
   } catch (e) {
@@ -1598,7 +1661,7 @@ async function uploadImages(files) {
     say(T.imgDone(files.length, j.pages || PAGES.length), 'ok');
     note(T.imgAgain);
   } catch (e) {
-    say(String(e && e.message || e), 'bad');
+    failBox(human(e), () => uploadImages(files));
   }
 }
 
@@ -1633,14 +1696,57 @@ async function upload(f) {
     });
     const j = await r.json().catch(() => null);
     if (!r.ok || !j || !j.ok) {
-      say((j && (j.human || j.error)) || ('HTTP ' + r.status), 'bad');
-      return;
+      failBox((j && j.human) || T.errSrv(r.status), () => upload(f));
+      return false;
     }
     NAME = j.name || f.name || 'document.pdf';
     await render(f);
     say('');
+    return true;
   } catch (e) {
-    say(String(e && e.message || e), 'bad');
+    failBox(human(e), () => upload(f));
+    return false;
+  }
+}
+
+/* ═══ ФАЙЛ ИЗ ЧАТА ОТКРЫВАЕТСЯ САМ (ТЗ Ren 24.11) ═══
+   Кнопка под документом в чате открывала студию ПУСТОЙ: адрес кнопки нёс только язык и приём,
+   и человек выбирал файл второй раз - хотя бот его только что держал в руках. Теперь в адресе
+   `doc=<номер файла на холсте>` (номер, а не имя: имя - персональные данные, через ящик и
+   адрес не ходят). Путь: билет -> сигнал ящиком `fm_open` с меткой `list: 'canvas'` -> бот
+   скачивает документ по file_id и кладёт в ЭТУ сессию на песочнице (имя - туда же снимком) ->
+   страница забирает файл дверью предпросмотра и загружает его обычной `upload`.
+   Отказ на каждом шаге назван словами и чинится кнопкой «Повторить» (см. `failBox`). */
+const DOCN = Math.max(0, parseInt(Q.get('doc') || '0', 10) || 0);
+async function openFromChat() {
+  if (!DOCN) return;
+  const off = whyOff();
+  if (off) return;                       // причина уже на экране; выбрать файл руками можно
+  $('fail').hidden = true;
+  say(T.chatGet);
+  try {
+    await ticket();
+    const a = await signalAsk({ kind: 'fm', act: 'fm_open', sid: SID, n: DOCN, list: 'canvas' }, 40);
+    if (a.why) { failBox(a.why === 'timeout' ? T.errSlow : T.errSrv(a.why), openFromChat); return; }
+    if (a.res && a.res.note) { failBox(a.res.note, openFromChat); return; }
+    const r = await fetch(u('/pdf/fm/file') + '&n=' + DOCN);
+    if (!r.ok) {
+      const j = await r.json().catch(() => null);
+      failBox((j && j.human) || T.errSrv(r.status), openFromChat);
+      return;
+    }
+    const blob = await r.blob();
+    let name = 'document.pdf';
+    try {
+      const g = await fetch(u('/pdf/fm/list'));
+      const gj = await g.json().catch(() => null);
+      if (g.ok && gj && gj.chat_doc && gj.chat_doc.n === DOCN && gj.chat_doc.name) name = gj.chat_doc.name;
+    } catch (e) { console.log('[pdf] имя файла не взял: ' + (e && e.message)); }
+    const f = new File([blob], name, { type: 'application/pdf' });
+    const okk = await upload(f);
+    if (okk) note('');
+  } catch (e) {
+    failBox(human(e), openFromChat);
   }
 }
 
@@ -3759,6 +3865,7 @@ function texts() {
   checkVersion();
   pdfjs = await loadPdfjs();
   if (!pdfjs) note(pdfjsWhy());
+  if (pdfjs && DOCN) setTimeout(openFromChat, 0);
 
   /* ЧТО ПРОСИЛИ ОТКРЫТЬ - ЧИТАЕМ ИЗ АДРЕСА. Неизвестное имя игнорируем молча: чужой
      параметр в ссылке не повод пугать человека ошибкой. */
